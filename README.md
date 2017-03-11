@@ -1,7 +1,7 @@
 # cao-utils
 Convert .obj/.blend files to .cao
 
-**Useage**:
+**Usage**:
 
 For OBJ to CAO
 
