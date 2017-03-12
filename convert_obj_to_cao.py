@@ -74,8 +74,6 @@ def file_exists(filename):
 
 
 def get_name(fname):
-    """Create model name based of filename ("path/fname.js" -> "fname").
-    """
     return os.path.splitext(os.path.basename(fname))[0]
 
 def generate_vertices(v):
@@ -178,7 +176,6 @@ def parse_obj(fname, outfile, method):
                 chunks = [chunks[0]] + chunks[1].split()
 
             # Vertices as (x,y,z) coordinates
-            # v 0.123 0.234 0.345
             if chunks[0] == "v" and len(chunks) == 4:
                 x = float(chunks[1])
                 y = float(chunks[2])
@@ -186,7 +183,6 @@ def parse_obj(fname, outfile, method):
                 vertices.append(chunksvalue)
 
             # Normals in (x,y,z) form; normals might not be unit
-            # vn 0.707 0.000 0.707
             if chunks[0] == "vn" and len(chunks) == 4:
                 x = float(chunks[1])
                 y = float(chunks[2])
@@ -194,7 +190,6 @@ def parse_obj(fname, outfile, method):
                 normals.append([x,y,z])
 
             # Texture coordinates in (u,v[,w]) coordinates, w is optional
-            # vt 0.500 -1.352 [0.234]
             if chunks[0] == "vt" and len(chunks) >= 3:
                 u = float(chunks[1])
                 v = float(chunks[2])
