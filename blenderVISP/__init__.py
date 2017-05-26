@@ -119,11 +119,7 @@ class ExportOBJ(bpy.types.Operator, ExportHelper):
             description="",
             default=False,
             )
-    group_by_material = BoolProperty(
-            name="Material Groups",
-            description="",
-            default=False,
-            )
+
     keep_vertex_order = BoolProperty(
             name="Keep Vertex Order",
             description="",

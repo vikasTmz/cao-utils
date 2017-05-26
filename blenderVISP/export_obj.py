@@ -8,13 +8,6 @@ import mathutils
 import bpy_extras.io_utils
 
 
-def name_compat(name):
-    if name is None:
-        return 'None'
-    else:
-        return name.replace(' ', '_')
-
-
 def mesh_triangulate(me):
     import bmesh
     bm = bmesh.new()
@@ -46,56 +39,20 @@ def write_nurb(fw, ob, ob_mat):
             DEG_ORDER_U = nu.order_u - 1  # odd but tested to be correct
 
         if nu.type == 'BEZIER':
-            print("\tWarning, bezier curve:", ob.name, "only poly and nurbs curves supported")
             continue
 
         if nu.point_count_v > 1:
-            print("\tWarning, surface:", ob.name, "only poly and nurbs curves supported")
             continue
 
         if len(nu.points) <= DEG_ORDER_U:
-            print("\tWarning, order_u is lower then vert count, skipping:", ob.name)
             continue
 
         pt_num = 0
-        do_closed = nu.use_cyclic_u
-        do_endpoints = (do_closed == 0) and nu.use_endpoint_u
 
         for pt in nu.points:
             fw('v %.6f %.6f %.6f\n' % (ob_mat * pt.co.to_3d())[:])
             pt_num += 1
         tot_verts += pt_num
-
-        fw('g %s\n' % (name_compat(ob.name)))  # name_compat(ob.getData(1)) could use the data name too
-        fw('cstype bspline\n')  # not ideal, hard coded
-        fw('deg %d\n' % DEG_ORDER_U)  # not used for curves but most files have it still
-
-        curve_ls = [-(i + 1) for i in range(pt_num)]
-
-        # 'curv' keyword
-        if do_closed:
-            if DEG_ORDER_U == 1:
-                pt_num += 1
-                curve_ls.append(-1)
-            else:
-                pt_num += DEG_ORDER_U
-                curve_ls = curve_ls + curve_ls[0:DEG_ORDER_U]
-
-        fw('curv 0.0 1.0 %s\n' % (" ".join([str(i) for i in curve_ls])))  # Blender has no U and V values for the curve
-
-        # 'parm' keyword
-        tot_parm = (DEG_ORDER_U + 1) + pt_num
-        tot_parm_div = float(tot_parm - 1)
-        parm_ls = [(i / tot_parm_div) for i in range(tot_parm)]
-
-        if do_endpoints:  # end points, force param
-            for i in range(DEG_ORDER_U + 1):
-                parm_ls[i] = 0.0
-                parm_ls[-(1 + i)] = 1.0
-
-        fw("parm u %s\n" % " ".join(["%.6f" % i for i in parm_ls]))
-
-        fw('end\n')
 
     return tot_verts
 
@@ -110,7 +67,6 @@ def write_file(filepath, objects, scene,
                EXPORT_APPLY_MODIFIERS=True,
                EXPORT_BLEN_OBS=True,
                EXPORT_GROUP_BY_OB=False,
-               EXPORT_GROUP_BY_MAT=False,
                EXPORT_KEEP_VERT_ORDER=False,
                EXPORT_POLYGROUPS=False,
                EXPORT_CURVE_AS_NURBS=True,
@@ -121,32 +77,6 @@ def write_file(filepath, objects, scene,
     if EXPORT_GLOBAL_MATRIX is None:
         EXPORT_GLOBAL_MATRIX = mathutils.Matrix()
 
-    def veckey3d(v):
-        return round(v.x, 6), round(v.y, 6), round(v.z, 6)
-
-    def veckey2d(v):
-        return round(v[0], 6), round(v[1], 6)
-
-    def findVertexGroupName(face, vWeightMap):
-        """
-        Searches the vertexDict to see what groups is assigned to a given face.
-        We use a frequency system in order to sort out the name because a given vetex can
-        belong to two or more groups at the same time. To find the right name for the face
-        we list all the possible vertex group names with their frequency and then sort by
-        frequency in descend order. The top element is the one shared by the highest number
-        of vertices is the face's group
-        """
-        weightDict = {}
-        for vert_index in face.vertices:
-            vWeights = vWeightMap[vert_index]
-            for vGroupName, weight in vWeights:
-                weightDict[vGroupName] = weightDict.get(vGroupName, 0.0) + weight
-
-        if weightDict:
-            return max((weight, vGroupName) for vGroupName, weight in weightDict.items())[1]
-        else:
-            return '(null)'
-
     print('CAO Export path: %r' % filepath)
 
     time1 = time.time()
@@ -155,15 +85,10 @@ def write_file(filepath, objects, scene,
     fw = file.write
 
     # Write Header
-    fw('# Blender v%s CAO File: %r\n' % (bpy.app.version_string, os.path.basename(bpy.data.filepath)))
-
-    # Tell the obj file what material file to use.
-    # if EXPORT_MTL:
-    #     mtlfilepath = os.path.splitext(filepath)[0] + ".mtl"
-    #     fw('mtllib %s\n' % repr(os.path.basename(mtlfilepath))[1:-1])  # filepath can contain non utf8 chars, use repr
+    fw('# Blender v%s CAO File\n' % (bpy.app.version_string))
 
     # Initialize totals, these are updated each object
-    totverts = totuvco = totno = 1
+    totverts = totno = 1
 
     face_vert_index = 1
 
@@ -192,7 +117,7 @@ def write_file(filepath, objects, scene,
             obs = [(ob_main, ob_main.matrix_world)]
 
         for ob, ob_mat in obs:
-            uv_unique_count = no_unique_count = 0
+            no_unique_count = 0
 
             # Nurbs curve support
             if EXPORT_CURVE_AS_NURBS and test_nurbs_compat(ob):
@@ -250,8 +175,9 @@ def write_file(filepath, objects, scene,
                     sort_func = lambda a: a[0].use_smooth
 
                 face_index_pairs.sort(key=sort_func)
-
                 del sort_func
+
+            fw('# %s\n' % (ob_main.name))
 
             # Vert
             for v in me_verts:
@@ -269,7 +195,6 @@ def write_file(filepath, objects, scene,
 
             # Make the indices global rather then per mesh
             totverts += len(me_verts)
-            totuvco += uv_unique_count
             totno += no_unique_count
 
             # clean up
@@ -296,7 +221,6 @@ def _write(context, filepath,
               EXPORT_APPLY_MODIFIERS,  # ok
               EXPORT_BLEN_OBS,
               EXPORT_GROUP_BY_OB,
-              EXPORT_GROUP_BY_MAT,
               EXPORT_KEEP_VERT_ORDER,
               EXPORT_POLYGROUPS,
               EXPORT_CURVE_AS_NURBS,
@@ -353,7 +277,6 @@ def _write(context, filepath,
                    EXPORT_APPLY_MODIFIERS,
                    EXPORT_BLEN_OBS,
                    EXPORT_GROUP_BY_OB,
-                   EXPORT_GROUP_BY_MAT,
                    EXPORT_KEEP_VERT_ORDER,
                    EXPORT_POLYGROUPS,
                    EXPORT_CURVE_AS_NURBS,
@@ -400,7 +323,6 @@ def save(operator, context, filepath="",
            EXPORT_APPLY_MODIFIERS=use_mesh_modifiers,
            EXPORT_BLEN_OBS=use_blen_objects,
            EXPORT_GROUP_BY_OB=group_by_object,
-           EXPORT_GROUP_BY_MAT=group_by_material,
            EXPORT_KEEP_VERT_ORDER=keep_vertex_order,
            EXPORT_POLYGROUPS=use_vertex_groups,
            EXPORT_CURVE_AS_NURBS=use_nurbs,
