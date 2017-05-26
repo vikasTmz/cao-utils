@@ -46,7 +46,7 @@ class ExportOBJ(bpy.types.Operator, ExportHelper):
             description="Export selected objects only",
             default=False,
             )
-    
+
     # object group
     use_mesh_modifiers = BoolProperty(
             name="Apply Modifiers",
@@ -76,17 +76,6 @@ class ExportOBJ(bpy.types.Operator, ExportHelper):
             name="Write Nurbs",
             description="Write nurbs curves as OBJ nurbs rather than "
                         "converting to geometry",
-            default=False,
-            )
-    use_vertex_groups = BoolProperty(
-            name="Polygroups",
-            description="",
-            default=False,
-            )
-
-    keep_vertex_order = BoolProperty(
-            name="Keep Vertex Order",
-            description="",
             default=False,
             )
 

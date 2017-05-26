@@ -62,8 +62,6 @@ def write_file(filepath, objects, scene,
                EXPORT_EDGES=False,
                EXPORT_NORMALS=False,
                EXPORT_APPLY_MODIFIERS=True,
-               EXPORT_KEEP_VERT_ORDER=False,
-               EXPORT_POLYGROUPS=False,
                EXPORT_CURVE_AS_NURBS=True,
                EXPORT_GLOBAL_MATRIX=None,
                EXPORT_PATH_MODE='AUTO',
@@ -114,7 +112,7 @@ def write_file(filepath, objects, scene,
         for ob, ob_mat in obs:
             no_unique_count = 0
 
-            # Nurbs curve support
+            # Nurbs curve support : Introduced based on previous export formats
             if EXPORT_CURVE_AS_NURBS and test_nurbs_compat(ob):
                 ob_mat = EXPORT_GLOBAL_MATRIX * ob_mat
                 totverts += write_nurb(fw, ob, ob_mat)
@@ -152,19 +150,14 @@ def write_file(filepath, objects, scene,
 
             smooth_groups, smooth_groups_tot = (), 0
 
-            # Sort by Material, then images
-            # so we dont over context switch in the obj file.
-            if EXPORT_KEEP_VERT_ORDER:
-                pass
+            # no materials
+            if smooth_groups:
+                sort_func = lambda a: smooth_groups[a[1] if a[0].use_smooth else False]
             else:
-                # no materials
-                if smooth_groups:
-                    sort_func = lambda a: smooth_groups[a[1] if a[0].use_smooth else False]
-                else:
-                    sort_func = lambda a: a[0].use_smooth
+                sort_func = lambda a: a[0].use_smooth
 
-                face_index_pairs.sort(key=sort_func)
-                del sort_func
+            face_index_pairs.sort(key=sort_func)
+            del sort_func
 
             fw('# %s\n' % (ob_main.name))
 
@@ -180,6 +173,7 @@ def write_file(filepath, objects, scene,
                 fw('f')
                 for vi, v, li in f_v:
                     fw(" %d" % (totverts + v.index))
+                    # print(totverts,v.index,totverts + v.index)
                 fw('\n')
 
             # Make the indices global rather then per mesh
@@ -205,8 +199,6 @@ def _write(context, filepath,
               EXPORT_EDGES,
               EXPORT_NORMALS,  # not yet
               EXPORT_APPLY_MODIFIERS,  # ok
-              EXPORT_KEEP_VERT_ORDER,
-              EXPORT_POLYGROUPS,
               EXPORT_CURVE_AS_NURBS,
               EXPORT_SEL_ONLY,  # ok
               EXPORT_GLOBAL_MATRIX,
@@ -223,8 +215,8 @@ def _write(context, filepath,
         bpy.ops.object.mode_set(mode='OBJECT')
 
     orig_frame = scene.frame_current
-
     scene_frames = [orig_frame]
+    EXPORT_SEL_ONLY = True
 
     # Loop through all frames in the scene and export.
     for frame in scene_frames:
@@ -232,11 +224,9 @@ def _write(context, filepath,
         scene.frame_set(frame, 0.0)
         if EXPORT_SEL_ONLY:
             objects = context.selected_objects
+            print(objects)
         else:
             objects = scene.objects
-
-        print("objects = "),
-        print(objects)
         
         full_path = ''.join(context_name)
 
@@ -247,8 +237,6 @@ def _write(context, filepath,
                    EXPORT_EDGES,
                    EXPORT_NORMALS,
                    EXPORT_APPLY_MODIFIERS,
-                   EXPORT_KEEP_VERT_ORDER,
-                   EXPORT_POLYGROUPS,
                    EXPORT_CURVE_AS_NURBS,
                    EXPORT_GLOBAL_MATRIX,
                    EXPORT_PATH_MODE,
@@ -262,8 +250,6 @@ def save(operator, context, filepath="",
          use_normals=False,
          use_mesh_modifiers=True,
          group_by_material=False,
-         keep_vertex_order=False,
-         use_vertex_groups=False,
          use_nurbs=True,
          use_selection=True,
          global_matrix=None,
@@ -275,8 +261,6 @@ def save(operator, context, filepath="",
            EXPORT_EDGES=use_edges,
            EXPORT_NORMALS=use_normals,
            EXPORT_APPLY_MODIFIERS=use_mesh_modifiers,
-           EXPORT_KEEP_VERT_ORDER=keep_vertex_order,
-           EXPORT_POLYGROUPS=use_vertex_groups,
            EXPORT_CURVE_AS_NURBS=use_nurbs,
            EXPORT_SEL_ONLY=use_selection,
            EXPORT_GLOBAL_MATRIX=global_matrix,
