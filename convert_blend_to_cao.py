@@ -15,7 +15,7 @@ os.system(" python convert_obj_to_cao.py -i temp.obj -o " + obj_out + " -t " + m
 
 
 # for ob in bpy.data.objects:
-#     if ob.name == "Cylinder 1.001":
+#     if ob.name == "Cylinder 1.001": bpy.data.window_managers["WinMan"].(type) = "3D Cylinders"
 #     	print (ob.name,ob.dimensions,ob.location,ob.rotation_euler.z)
 
 # ob = bpy.data.objects["Cube"]
