@@ -60,13 +60,8 @@ def write_nurb(fw, ob, ob_mat):
 def write_file(filepath, objects, scene,
                EXPORT_TRI=False,
                EXPORT_EDGES=False,
-               EXPORT_SMOOTH_GROUPS=False,
-               EXPORT_SMOOTH_GROUPS_BITFLAGS=False,
                EXPORT_NORMALS=False,
-               EXPORT_UV=True,
                EXPORT_APPLY_MODIFIERS=True,
-               EXPORT_BLEN_OBS=True,
-               EXPORT_GROUP_BY_OB=False,
                EXPORT_KEEP_VERT_ORDER=False,
                EXPORT_POLYGROUPS=False,
                EXPORT_CURVE_AS_NURBS=True,
@@ -155,13 +150,7 @@ def write_file(filepath, objects, scene,
                 bpy.data.meshes.remove(me)
                 continue  # dont bother with this mesh.
 
-
-            if (EXPORT_SMOOTH_GROUPS or EXPORT_SMOOTH_GROUPS_BITFLAGS) and face_index_pairs:
-                smooth_groups, smooth_groups_tot = me.calc_smooth_groups(EXPORT_SMOOTH_GROUPS_BITFLAGS)
-                if smooth_groups_tot <= 1:
-                    smooth_groups, smooth_groups_tot = (), 0
-            else:
-                smooth_groups, smooth_groups_tot = (), 0
+            smooth_groups, smooth_groups_tot = (), 0
 
             # Sort by Material, then images
             # so we dont over context switch in the obj file.
@@ -214,18 +203,12 @@ def write_file(filepath, objects, scene,
 def _write(context, filepath,
               EXPORT_TRI,  # ok
               EXPORT_EDGES,
-              EXPORT_SMOOTH_GROUPS,
-              EXPORT_SMOOTH_GROUPS_BITFLAGS,
               EXPORT_NORMALS,  # not yet
-              EXPORT_UV,  # ok
               EXPORT_APPLY_MODIFIERS,  # ok
-              EXPORT_BLEN_OBS,
-              EXPORT_GROUP_BY_OB,
               EXPORT_KEEP_VERT_ORDER,
               EXPORT_POLYGROUPS,
               EXPORT_CURVE_AS_NURBS,
               EXPORT_SEL_ONLY,  # ok
-              EXPORT_ANIMATION,
               EXPORT_GLOBAL_MATRIX,
               EXPORT_PATH_MODE,
               ):  # Not used
@@ -241,18 +224,10 @@ def _write(context, filepath,
 
     orig_frame = scene.frame_current
 
-    # Export an animation?
-    if EXPORT_ANIMATION:
-        scene_frames = range(scene.frame_start, scene.frame_end + 1)  # Up to and including the end frame.
-    else:
-        scene_frames = [orig_frame]  # Dont export an animation.
+    scene_frames = [orig_frame]
 
-    print("len:scene frames : "),
-    print(len(scene_frames))
     # Loop through all frames in the scene and export.
     for frame in scene_frames:
-        if EXPORT_ANIMATION:  # Add frame to the filepath.
-            context_name[2] = '_%.6d' % frame
 
         scene.frame_set(frame, 0.0)
         if EXPORT_SEL_ONLY:
@@ -270,13 +245,8 @@ def _write(context, filepath,
         write_file(full_path, objects, scene,
                    EXPORT_TRI,
                    EXPORT_EDGES,
-                   EXPORT_SMOOTH_GROUPS,
-                   EXPORT_SMOOTH_GROUPS_BITFLAGS,
                    EXPORT_NORMALS,
-                   EXPORT_UV,
                    EXPORT_APPLY_MODIFIERS,
-                   EXPORT_BLEN_OBS,
-                   EXPORT_GROUP_BY_OB,
                    EXPORT_KEEP_VERT_ORDER,
                    EXPORT_POLYGROUPS,
                    EXPORT_CURVE_AS_NURBS,
@@ -286,29 +256,16 @@ def _write(context, filepath,
 
     scene.frame_set(orig_frame, 0.0)
 
-"""
-Currently the exporter lacks these features:
-* multiple scene export (only active scene is written)
-* particles
-"""
-
-
 def save(operator, context, filepath="",
          use_triangles=False,
          use_edges=True,
          use_normals=False,
-         use_smooth_groups=False,
-         use_smooth_groups_bitflags=False,
-         use_uvs=True,
          use_mesh_modifiers=True,
-         use_blen_objects=True,
-         group_by_object=False,
          group_by_material=False,
          keep_vertex_order=False,
          use_vertex_groups=False,
          use_nurbs=True,
          use_selection=True,
-         use_animation=False,
          global_matrix=None,
          path_mode='AUTO'
          ):
@@ -316,18 +273,12 @@ def save(operator, context, filepath="",
     _write(context, filepath,
            EXPORT_TRI=use_triangles,
            EXPORT_EDGES=use_edges,
-           EXPORT_SMOOTH_GROUPS=use_smooth_groups,
-           EXPORT_SMOOTH_GROUPS_BITFLAGS=use_smooth_groups_bitflags,
            EXPORT_NORMALS=use_normals,
-           EXPORT_UV=use_uvs,
            EXPORT_APPLY_MODIFIERS=use_mesh_modifiers,
-           EXPORT_BLEN_OBS=use_blen_objects,
-           EXPORT_GROUP_BY_OB=group_by_object,
            EXPORT_KEEP_VERT_ORDER=keep_vertex_order,
            EXPORT_POLYGROUPS=use_vertex_groups,
            EXPORT_CURVE_AS_NURBS=use_nurbs,
            EXPORT_SEL_ONLY=use_selection,
-           EXPORT_ANIMATION=use_animation,
            EXPORT_GLOBAL_MATRIX=global_matrix,
            EXPORT_PATH_MODE=path_mode,
            )

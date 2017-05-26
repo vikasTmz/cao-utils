@@ -46,12 +46,7 @@ class ExportOBJ(bpy.types.Operator, ExportHelper):
             description="Export selected objects only",
             default=False,
             )
-    use_animation = BoolProperty(
-            name="Animation",
-            description="Write out an OBJ for each frame",
-            default=False,
-            )
-
+    
     # object group
     use_mesh_modifiers = BoolProperty(
             name="Apply Modifiers",
@@ -65,32 +60,13 @@ class ExportOBJ(bpy.types.Operator, ExportHelper):
             description="",
             default=True,
             )
-    use_smooth_groups = BoolProperty(
-            name="Smooth Groups",
-            description="Write sharp edges as smooth groups",
-            default=False,
-            )
-    use_smooth_groups_bitflags = BoolProperty(
-            name="Bitflag Smooth Groups",
-            description="Same as 'Smooth Groups', but generate smooth groups IDs as bitflags "
-                        "(produces at most 32 different smooth groups, usually much less)",
-            default=False,
-            )
+
     use_normals = BoolProperty(
             name="Include Normals",
             description="",
             default=False,
             )
-    use_uvs = BoolProperty(
-            name="Include UVs",
-            description="Write out the active UV coordinates",
-            default=True,
-            )
-    # use_materials = BoolProperty(
-    #         name="Write Materials",
-    #         description="Write out the MTL file",
-    #         default=True,
-    #         )
+
     use_triangles = BoolProperty(
             name="Triangulate Faces",
             description="Convert all faces to triangles",
@@ -104,18 +80,6 @@ class ExportOBJ(bpy.types.Operator, ExportHelper):
             )
     use_vertex_groups = BoolProperty(
             name="Polygroups",
-            description="",
-            default=False,
-            )
-
-    # grouping group
-    use_blen_objects = BoolProperty(
-            name="Objects as OBJ Objects",
-            description="",
-            default=True,
-            )
-    group_by_object = BoolProperty(
-            name="Objects as OBJ Groups ",
             description="",
             default=False,
             )
