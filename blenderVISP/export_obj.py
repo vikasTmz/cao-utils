@@ -15,7 +15,7 @@ import bpy_extras.io_utils
 TEMPLATE_CAO_FILE = u"""\
 {
 V1,
-%(nPoints)d,   
+%(nPoints)d,
 # 3D points,
 [%(points)s],
 # 3D lines,
@@ -56,7 +56,7 @@ def generate_vertices(v):
     return  TEMPLATE_VERTEX % (v[0], v[1], v[2])
 
 def generate_lines(l):
-    return TEMPLATE_LINES % (l[0] ,l[1])    
+    return TEMPLATE_LINES % (l[0] ,l[1])
 
 def generate_facelines(fl):
     return " ".join(map(str,[x for x in fl]))
@@ -168,17 +168,24 @@ def write_file(MODEL_TYPE, filepath, objects, scene,
                 vertices.append(v.co[:])
 
             for f, f_index in face_index_pairs:
-
                 #f_v = [(vi, me_verts[v_idx]) for vi, v_idx in enumerate(f.vertices)]
                 f_v = [(vi, me_verts[v_idx], l_idx) for vi, (v_idx, l_idx) in enumerate(zip(f.vertices, f.loop_indices))]
-                tempface = []
+                f_side = []
 
                 # fw('f')
                 for vi, v, li in f_v:
                     # fw(" %d" % (totverts + v.index))
-                    tempface.append(totverts + v.index)
+                    f_side.append(totverts + v.index)
 
-                faces.append(tempface)
+                if MODEL_TYPE == "3D Lines":
+                    initialen = len(lines)
+                    for i in range(0,len(f_side)-1):
+                        lines.append([f_side[i]-1,f_side[i+1]-1])
+                    lines.append([f_side[len(f_side)-1]-1,f_side[0]-1])
+
+                    facelines.append([len(lines)-initialen,list(range(initialen,len(lines)))])
+
+                faces.append(f_side)
                 # fw('\n')
 
             # Make the indices global rather then per mesh
@@ -261,7 +268,7 @@ def _write(context, MODEL_TYPE, filepath,
             objects = context.selected_objects
         else:
             objects = scene.objects
-        
+
         full_path = ''.join(context_name)
 
         # erm... bit of a problem here, this can overwrite files when exporting frames. not too bad.
