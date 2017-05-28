@@ -8,6 +8,39 @@ import mathutils
 import bpy_extras.io_utils
 
 
+# #####################################################
+# Templates
+# #####################################################
+
+TEMPLATE_CAO_FILE = u"""\
+{
+V1,
+%(nPoints)d,   
+# 3D points,
+[%(points)s],
+# 3D lines,
+%(nLines)d,
+[%(lines)s],
+# Faces from 3D lines,
+%(nFacelines)d,
+[%(facelines)s],
+# Faces from 3D points,
+%(nFacepoints)d,
+[%(facepoints)s],
+# 3D cylinders,
+%(nCylinder)d,
+[%(cylinders)s],
+# 3D circles,
+%(nCircles)d,
+[%(circles)s]
+}
+"""
+TEMPLATE_LINES = "%d ,%d"
+
+# #####################################################
+# Utils
+# #####################################################
+
 def mesh_triangulate(me):
     import bmesh
     bm = bmesh.new()
@@ -16,45 +49,17 @@ def mesh_triangulate(me):
     bm.to_mesh(me)
     bm.free()
 
-def test_nurbs_compat(ob):
-    if ob.type != 'CURVE':
-        return False
+def generate_vertices(v):
+    return v #TEMPLATE_VERTEX % (v[0], v[1], v[2])
 
-    for nu in ob.data.splines:
-        if nu.point_count_v == 1 and nu.type != 'BEZIER':  # not a surface and not bezier
-            return True
+def generate_lines(l):
+    return TEMPLATE_LINES % (l[0] ,l[1])    
 
-    return False
+def generate_facelines(fl):
+    return " ".join(map(str,[x for x in fl]))
 
-
-def write_nurb(fw, ob, ob_mat):
-    tot_verts = 0
-    cu = ob.data
-
-    # use negative indices
-    for nu in cu.splines:
-        if nu.type == 'POLY':
-            DEG_ORDER_U = 1
-        else:
-            DEG_ORDER_U = nu.order_u - 1  # odd but tested to be correct
-
-        if nu.type == 'BEZIER':
-            continue
-
-        if nu.point_count_v > 1:
-            continue
-
-        if len(nu.points) <= DEG_ORDER_U:
-            continue
-
-        pt_num = 0
-
-        for pt in nu.points:
-            fw('v %.6f %.6f %.6f\n' % (ob_mat * pt.co.to_3d())[:])
-            pt_num += 1
-        tot_verts += pt_num
-
-    return tot_verts
+def generate_faces(v):
+    return str(len(v.split(" "))) + " " +  " ".join(map(str,[x-1 for x in map(int,[x.split("/")[0] for x in v.split(" ")])]))
 
 
 def write_file(filepath, objects, scene,
@@ -62,9 +67,7 @@ def write_file(filepath, objects, scene,
                EXPORT_EDGES=False,
                EXPORT_NORMALS=False,
                EXPORT_APPLY_MODIFIERS=True,
-               EXPORT_CURVE_AS_NURBS=True,
                EXPORT_GLOBAL_MATRIX=None,
-               EXPORT_PATH_MODE='AUTO',
                ):
 
     if EXPORT_GLOBAL_MATRIX is None:
@@ -87,37 +90,33 @@ def write_file(filepath, objects, scene,
 
     copy_set = set()
 
+    vertices = []
+    faces = []
+    lines = []
+    facelines = []
+
     # Get all meshes
     for ob_main in objects:
 
         # ignore dupli children
         if ob_main.parent and ob_main.parent.dupli_type in {'VERTS', 'FACES'}:
-            # XXX
+
             print(ob_main.name, 'is a dupli child - ignoring')
             continue
 
         obs = []
         if ob_main.dupli_type != 'NONE':
-            # XXX
+
             print('creating dupli_list on', ob_main.name)
             ob_main.dupli_list_create(scene)
-
             obs = [(dob.object, dob.matrix) for dob in ob_main.dupli_list]
 
-            # XXX debug print
             print(ob_main.name, 'has', len(obs), 'dupli children')
         else:
             obs = [(ob_main, ob_main.matrix_world)]
 
         for ob, ob_mat in obs:
             no_unique_count = 0
-
-            # Nurbs curve support : Introduced based on previous export formats
-            if EXPORT_CURVE_AS_NURBS and test_nurbs_compat(ob):
-                ob_mat = EXPORT_GLOBAL_MATRIX * ob_mat
-                totverts += write_nurb(fw, ob, ob_mat)
-                continue
-            # END NURBS
 
             try:
                 me = ob.to_mesh(scene, EXPORT_APPLY_MODIFIERS, 'PREVIEW', calc_tessface=False)
@@ -164,6 +163,8 @@ def write_file(filepath, objects, scene,
             # Vert
             for v in me_verts:
                 fw('v %.6f %.6f %.6f\n' % v.co[:])
+                vertices.append(v.co[:])
+                # print(v.co[:])
 
             for f, f_index in face_index_pairs:
 
@@ -171,9 +172,12 @@ def write_file(filepath, objects, scene,
                 f_v = [(vi, me_verts[v_idx], l_idx) for vi, (v_idx, l_idx) in enumerate(zip(f.vertices, f.loop_indices))]
 
                 fw('f')
+                tempface = []
                 for vi, v, li in f_v:
                     fw(" %d" % (totverts + v.index))
+                    tempface.append(totverts + v.index)
                     # print(totverts,v.index,totverts + v.index)
+                faces.append(tempface)
                 fw('\n')
 
             # Make the indices global rather then per mesh
@@ -186,6 +190,26 @@ def write_file(filepath, objects, scene,
         if ob_main.dupli_type != 'NONE':
             ob_main.dupli_list_clear()
 
+    nlines = nfacelines = 0
+    npoints = len(vertices)
+    nfacepoints = len(faces)
+    lines = facelines = []
+
+    # text = TEMPLATE_CAO_FILE % {
+    #     "nPoints"  : npoints,
+    #     "points" : "\n".join(generate_vertices(v) for v in vertices),
+    #     "nLines" : nlines,
+    #     "lines" : "\n".join(generate_lines(l) for l in lines),
+    #     "nFacelines" : nfacelines,
+    #     "facelines" : "\n".join(generate_facelines(fl) for fl in facelines),
+    #     "nFacepoints" : nfacepoints,
+    #     "facepoints" : "\n".join(generate_faces(f) for f in faces),
+    #     "nCylinder" : 0,
+    #     "cylinders" : "",
+    #     "nCircles" : 0,
+    #     "circles" : "" 
+    # }
+
     file.close()
 
     # copy all collected files.
@@ -194,20 +218,18 @@ def write_file(filepath, objects, scene,
     print("OBJ Export time: %.2f" % (time.time() - time1))
 
 
-def _write(context, filepath,
+def _write(context, MODEL_TYPE, filepath,
               EXPORT_TRI,  # ok
               EXPORT_EDGES,
               EXPORT_NORMALS,  # not yet
               EXPORT_APPLY_MODIFIERS,  # ok
-              EXPORT_CURVE_AS_NURBS,
               EXPORT_SEL_ONLY,  # ok
               EXPORT_GLOBAL_MATRIX,
-              EXPORT_PATH_MODE,
               ):  # Not used
 
     base_name, ext = os.path.splitext(filepath)
     context_name = [base_name, '', '', ext]  # Base name, scene name, frame number, extension
-
+    print(MODEL_TYPE)
     scene = context.scene
 
     # Exit edit mode before exporting, so current object states are exported properly.
@@ -216,7 +238,7 @@ def _write(context, filepath,
 
     orig_frame = scene.frame_current
     scene_frames = [orig_frame]
-    EXPORT_SEL_ONLY = True
+    EXPORT_SEL_ONLY = True   # Hard-coded?
 
     # Loop through all frames in the scene and export.
     for frame in scene_frames:
@@ -224,7 +246,6 @@ def _write(context, filepath,
         scene.frame_set(frame, 0.0)
         if EXPORT_SEL_ONLY:
             objects = context.selected_objects
-            print(objects)
         else:
             objects = scene.objects
         
@@ -237,34 +258,27 @@ def _write(context, filepath,
                    EXPORT_EDGES,
                    EXPORT_NORMALS,
                    EXPORT_APPLY_MODIFIERS,
-                   EXPORT_CURVE_AS_NURBS,
                    EXPORT_GLOBAL_MATRIX,
-                   EXPORT_PATH_MODE,
                    )
 
     scene.frame_set(orig_frame, 0.0)
 
-def save(operator, context, filepath="",
+def save(operator, context, model_type, filepath="",
          use_triangles=False,
          use_edges=True,
          use_normals=False,
          use_mesh_modifiers=True,
-         group_by_material=False,
-         use_nurbs=True,
          use_selection=True,
          global_matrix=None,
-         path_mode='AUTO'
          ):
 
-    _write(context, filepath,
+    _write(context, model_type, filepath,
            EXPORT_TRI=use_triangles,
            EXPORT_EDGES=use_edges,
            EXPORT_NORMALS=use_normals,
            EXPORT_APPLY_MODIFIERS=use_mesh_modifiers,
-           EXPORT_CURVE_AS_NURBS=use_nurbs,
            EXPORT_SEL_ONLY=use_selection,
            EXPORT_GLOBAL_MATRIX=global_matrix,
-           EXPORT_PATH_MODE=path_mode,
            )
 
     return {'FINISHED'}

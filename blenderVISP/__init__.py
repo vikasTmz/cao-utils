@@ -17,16 +17,89 @@ if "bpy" in locals():
         imp.reload(export_obj)
 
 import bpy
-from bpy.props import (BoolProperty,
-                       FloatProperty,
-                       StringProperty,
-                       EnumProperty,
-                       )
+from bpy.props import *
 from bpy_extras.io_utils import (ImportHelper,
                                  ExportHelper,
                                  path_reference_mode,
                                  axis_conversion,
                                  )
+
+# #####################################################
+# UI Panel
+# #####################################################
+
+def initSceneProperties(scn):
+    bpy.types.Scene.MyInt = IntProperty(
+        name = "Integer", 
+        description = "Enter an integer")
+    scn['MyInt'] = 17
+ 
+    bpy.types.Scene.MyFloat = FloatProperty(
+        name = "Float", 
+        description = "Enter a float",
+        default = 33.33,
+        min = -100,
+        max = 100)
+ 
+    bpy.types.Scene.MyBool = BoolProperty(
+        name = "Boolean", 
+        description = "True or False?")
+    scn['MyBool'] = True
+ 
+    bpy.types.Scene.MyEnum = EnumProperty(
+        items = [('Eine', 'Un', 'One'), 
+                 ('Zwei', 'Deux', 'Two'),
+                 ('Drei', 'Trois', 'Three')],
+        name = "Ziffer")
+    scn['MyEnum'] = 2
+ 
+    bpy.types.Scene.MyString = StringProperty(
+        name = "String")
+    scn['MyString'] = "Lorem ipsum dolor sit amet"
+    return
+ 
+class IgnitProperties(bpy.types.PropertyGroup):
+    model_types = bpy.props.EnumProperty(
+        name = "Model export types",
+        description = "Model export types",
+        items = [
+            ("3D Points" , "3D Points" , "Description..."),
+            ("3D Lines", "3D Lines", "other description"),
+            ("3D Cylinders", "3D Cylinders", "Some other description")])
+
+class UIPanel(bpy.types.Panel):
+    bl_label = "ViSP CAD Properites Panel"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "TOOLS"
+ 
+    def draw(self, context):
+        layout = self.layout
+        scn = context.scene
+        row = layout.row()
+        row.prop(scn.ignit_panel, "model_types", expand=False)
+        # layout.prop(scn, 'MyInt', icon='BLENDER', toggle=True)
+        layout.operator("model_types.selection")
+ 
+# #####################################################
+# Button to Set Properites
+# #####################################################
+
+MType = "3D Points" 
+
+class OBJECT_OT_PrintPropsButton(bpy.types.Operator):
+    bl_idname = "model_types.selection"
+    bl_label = "Set Properites"
+ 
+    def execute(self, context):
+        global MType
+        scn = context.scene
+        MType = scn.ignit_panel.model_types
+        # print(scn.ignit_panel.model_types)
+        return{'FINISHED'}
+
+# #####################################################
+# ExportCAO
+# #####################################################
 
 class ExportOBJ(bpy.types.Operator, ExportHelper):
 
@@ -72,12 +145,6 @@ class ExportOBJ(bpy.types.Operator, ExportHelper):
             description="Convert all faces to triangles",
             default=False,
             )
-    use_nurbs = BoolProperty(
-            name="Write Nurbs",
-            description="Write nurbs curves as OBJ nurbs rather than "
-                        "converting to geometry",
-            default=False,
-            )
 
     axis_forward = EnumProperty(
             name="Forward",
@@ -107,7 +174,6 @@ class ExportOBJ(bpy.types.Operator, ExportHelper):
             default=1.0,
             )
 
-    path_mode = path_reference_mode
 
     check_extension = True
 
@@ -126,9 +192,9 @@ class ExportOBJ(bpy.types.Operator, ExportHelper):
                          axis_conversion(to_forward=self.axis_forward,
                                          to_up=self.axis_up,
                                          ).to_4x4())
-
         keywords["global_matrix"] = global_matrix
-        return export_obj.save(self, context, **keywords)
+
+        return export_obj.save(self, context, MType, **keywords)
 
 def menu_func_export(self, context):
     self.layout.operator(ExportOBJ.bl_idname, text="ViSP .cao")
@@ -136,14 +202,13 @@ def menu_func_export(self, context):
 
 def register():
     bpy.utils.register_module(__name__)
-
     bpy.types.INFO_MT_file_export.append(menu_func_export)
-
+    bpy.types.Scene.ignit_panel = bpy.props.PointerProperty(type=IgnitProperties)
 
 def unregister():
     bpy.utils.unregister_module(__name__)
-
     bpy.types.INFO_MT_file_export.remove(menu_func_export)
+    del bpy.types.Scene.ignit_panel
 
 if __name__ == "__main__":
     register()
