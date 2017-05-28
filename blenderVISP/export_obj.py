@@ -35,7 +35,10 @@ V1,
 [%(circles)s]
 }
 """
+
 TEMPLATE_LINES = "%d ,%d"
+
+TEMPLATE_VERTEX = "%f %f %f"
 
 # #####################################################
 # Utils
@@ -50,7 +53,7 @@ def mesh_triangulate(me):
     bm.free()
 
 def generate_vertices(v):
-    return v #TEMPLATE_VERTEX % (v[0], v[1], v[2])
+    return  TEMPLATE_VERTEX % (v[0], v[1], v[2])
 
 def generate_lines(l):
     return TEMPLATE_LINES % (l[0] ,l[1])    
@@ -59,10 +62,10 @@ def generate_facelines(fl):
     return " ".join(map(str,[x for x in fl]))
 
 def generate_faces(v):
-    return str(len(v.split(" "))) + " " +  " ".join(map(str,[x-1 for x in map(int,[x.split("/")[0] for x in v.split(" ")])]))
+    return str(len(v)) + " " + " ".join(map(str,[x-1 for x in v]))
 
 
-def write_file(filepath, objects, scene,
+def write_file(MODEL_TYPE, filepath, objects, scene,
                EXPORT_TRI=False,
                EXPORT_EDGES=False,
                EXPORT_NORMALS=False,
@@ -84,7 +87,7 @@ def write_file(filepath, objects, scene,
     fw('# Blender v%s CAO File\n' % (bpy.app.version_string))
 
     # Initialize totals, these are updated each object
-    totverts = totno = 1
+    totverts = 1
 
     face_vert_index = 1
 
@@ -116,7 +119,6 @@ def write_file(filepath, objects, scene,
             obs = [(ob_main, ob_main.matrix_world)]
 
         for ob, ob_mat in obs:
-            no_unique_count = 0
 
             try:
                 me = ob.to_mesh(scene, EXPORT_APPLY_MODIFIERS, 'PREVIEW', calc_tessface=False)
@@ -158,31 +160,29 @@ def write_file(filepath, objects, scene,
             face_index_pairs.sort(key=sort_func)
             del sort_func
 
-            fw('# %s\n' % (ob_main.name))
+            # fw('# %s\n' % (ob_main.name))
 
             # Vert
             for v in me_verts:
-                fw('v %.6f %.6f %.6f\n' % v.co[:])
+                # fw('v %.6f %.6f %.6f\n' % v.co[:])
                 vertices.append(v.co[:])
-                # print(v.co[:])
 
             for f, f_index in face_index_pairs:
 
                 #f_v = [(vi, me_verts[v_idx]) for vi, v_idx in enumerate(f.vertices)]
                 f_v = [(vi, me_verts[v_idx], l_idx) for vi, (v_idx, l_idx) in enumerate(zip(f.vertices, f.loop_indices))]
-
-                fw('f')
                 tempface = []
+
+                # fw('f')
                 for vi, v, li in f_v:
-                    fw(" %d" % (totverts + v.index))
+                    # fw(" %d" % (totverts + v.index))
                     tempface.append(totverts + v.index)
-                    # print(totverts,v.index,totverts + v.index)
+
                 faces.append(tempface)
-                fw('\n')
+                # fw('\n')
 
             # Make the indices global rather then per mesh
             totverts += len(me_verts)
-            totno += no_unique_count
 
             # clean up
             bpy.data.meshes.remove(me)
@@ -190,28 +190,42 @@ def write_file(filepath, objects, scene,
         if ob_main.dupli_type != 'NONE':
             ob_main.dupli_list_clear()
 
-    nlines = nfacelines = 0
-    npoints = len(vertices)
-    nfacepoints = len(faces)
-    lines = facelines = []
+    if MODEL_TYPE == "3D Points":
+        nlines = nfacelines = 0
+        npoints = len(vertices)
+        nfacepoints = len(faces)
+        lines = facelines = []
 
-    # text = TEMPLATE_CAO_FILE % {
-    #     "nPoints"  : npoints,
-    #     "points" : "\n".join(generate_vertices(v) for v in vertices),
-    #     "nLines" : nlines,
-    #     "lines" : "\n".join(generate_lines(l) for l in lines),
-    #     "nFacelines" : nfacelines,
-    #     "facelines" : "\n".join(generate_facelines(fl) for fl in facelines),
-    #     "nFacepoints" : nfacepoints,
-    #     "facepoints" : "\n".join(generate_faces(f) for f in faces),
-    #     "nCylinder" : 0,
-    #     "cylinders" : "",
-    #     "nCircles" : 0,
-    #     "circles" : "" 
-    # }
+    elif MODEL_TYPE == "3D Lines":
+        nfacepoints = 0
+        nlines = len(lines)
+        nfacelines = len(facelines)
+        npoints = len(vertices)
+        faces = []
 
+    text = TEMPLATE_CAO_FILE % {
+        "nPoints"  : npoints,
+        "points" : "\n".join(generate_vertices(v) for v in vertices),
+        "nLines" : nlines,
+        "lines" : "\n".join(generate_lines(l) for l in lines),
+        "nFacelines" : nfacelines,
+        "facelines" : "\n".join(generate_facelines(fl) for fl in facelines),
+        "nFacepoints" : nfacepoints,
+        "facepoints" : "\n".join(generate_faces(f) for f in faces),
+        "nCylinder" : 0,
+        "cylinders" : "",
+        "nCircles" : 0,
+        "circles" : "" 
+    }
+
+    fw(text)
     file.close()
 
+    os.system("sed -i 's/,//g' " + filepath)
+    os.system("sed -i 's/\(\[\|\]\)//g' " + filepath)
+    os.system("sed -i 's/{//g' " + filepath)
+    os.system("sed -i 's/}//g' " + filepath)
+    os.system("sed -i '/^$/d' " + filepath)
     # copy all collected files.
     bpy_extras.io_utils.path_reference_copy(copy_set)
 
@@ -229,7 +243,6 @@ def _write(context, MODEL_TYPE, filepath,
 
     base_name, ext = os.path.splitext(filepath)
     context_name = [base_name, '', '', ext]  # Base name, scene name, frame number, extension
-    print(MODEL_TYPE)
     scene = context.scene
 
     # Exit edit mode before exporting, so current object states are exported properly.
@@ -253,7 +266,7 @@ def _write(context, MODEL_TYPE, filepath,
 
         # erm... bit of a problem here, this can overwrite files when exporting frames. not too bad.
         # EXPORT THE FILE.
-        write_file(full_path, objects, scene,
+        write_file(MODEL_TYPE, full_path, objects, scene,
                    EXPORT_TRI,
                    EXPORT_EDGES,
                    EXPORT_NORMALS,
