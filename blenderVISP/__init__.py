@@ -29,14 +29,32 @@ from bpy_extras.io_utils import (ImportHelper,
 # #####################################################
 
 class IgnitProperties(bpy.types.PropertyGroup):
-    model_types = bpy.props.EnumProperty(
-        name = "Model export types",
+    vp_model_types = bpy.props.EnumProperty(
+        name = "Type",
         description = "Model export types",
         items = [
             ("3D Points" , "3D Points" , "Export as 3d points"),
             ("3D Lines", "3D Lines", "Export as 3d lines"),
             ("3D Cylinders", "3D Cylinders", "Export as 3d cylinders"),
             ("3D Circles", "3D Circles", "Export as 3d circles")])
+
+    vp_heirarchy_export = BoolProperty(
+        name = "Heirarchy", 
+        description = "True or False?")
+
+    vp_obj_Point1x = FloatProperty(name = "X", description = "Point 1 x coordinate", default = 0.000)
+    vp_obj_Point1y = FloatProperty(name = "Y", description = "Point 1 y coordinate", default = 0.000)
+    vp_obj_Point1z = FloatProperty(name = "Z", description = "Point 1 z coordinate", default = 0.000)
+
+    vp_obj_Point2x = FloatProperty(name = "X", description = "Point 2 x coordinate", default = 0.000)
+    vp_obj_Point2y = FloatProperty(name = "Y", description = "Point 2 y coordinate", default = 0.000)
+    vp_obj_Point2z = FloatProperty(name = "Z", description = "Point 2 z coordinate", default = 0.000)
+
+    vp_obj_Point3x = FloatProperty(name = "X", description = "Point 3 x coordinate", default = 0.000)
+    vp_obj_Point3y = FloatProperty(name = "Y", description = "Point 3 y coordinate", default = 0.000)
+    vp_obj_Point3z = FloatProperty(name = "Z", description = "Point 3 z coordinate", default = 0.000)
+    # vp_obj_Point1 = StringProperty(name = "Point 1 coordinate", default = "(0.00,0.00,0.00)",description = "Point 1 coord")
+
 
 class UIPanel(bpy.types.Panel):
     bl_label = "ViSP CAD Properites Panel"
@@ -46,8 +64,28 @@ class UIPanel(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         scn = context.scene
-        row = layout.row()
-        row.prop(scn.ignit_panel, "model_types", expand=False)
+        col = layout.column()
+        col.prop(scn.ignit_panel, "vp_model_types", expand=False)
+        
+        col.label("Point 1 coordinate (cylinder/circle) :", icon='TEXT')
+        row1 = col.row()
+        row1.prop(scn.ignit_panel, "vp_obj_Point1x")
+        row1.prop(scn.ignit_panel, "vp_obj_Point1y")
+        row1.prop(scn.ignit_panel, "vp_obj_Point1z")
+
+        col.label("Point 2 coordinate (cylinder/circle) :", icon='TEXT')
+        row2 = col.row()
+        row2.prop(scn.ignit_panel, "vp_obj_Point2x")
+        row2.prop(scn.ignit_panel, "vp_obj_Point2y")
+        row2.prop(scn.ignit_panel, "vp_obj_Point2z")
+
+        col.label("Point 3 coordinate :", icon='TEXT')
+        row2 = col.row()
+        row2.prop(scn.ignit_panel, "vp_obj_Point3x")
+        row2.prop(scn.ignit_panel, "vp_obj_Point3y")
+        row2.prop(scn.ignit_panel, "vp_obj_Point3z")
+
+        col.prop(scn.ignit_panel, "vp_heirarchy_export")
         # layout.prop(scn, 'MyInt', icon='BLENDER', toggle=True)
         layout.operator("model_types.selection")
  
@@ -55,17 +93,20 @@ class UIPanel(bpy.types.Panel):
 # Button to Set Properites
 # #####################################################
 
-MType = "3D Points" 
+vpMtype = "3D Points" 
+vpPoint1 = ""
 
 class OBJECT_OT_PrintPropsButton(bpy.types.Operator):
     bl_idname = "model_types.selection"
     bl_label = "Set Properites"
  
     def execute(self, context):
-        global MType
+        global vpMtype, vpPoint1
         scn = context.scene
-        MType = scn.ignit_panel.model_types
-        # print(scn.ignit_panel.model_types)
+        vpMtype = scn.ignit_panel.vp_model_types
+        vpPoint1 = scn.ignit_panel.vp_obj_Point1x
+
+        print(scn.ignit_panel.vp_obj_Point1)
         return{'FINISHED'}
 
 # #####################################################
@@ -165,7 +206,7 @@ class ExportCAO(bpy.types.Operator, ExportHelper):
                                          ).to_4x4())
         keywords["global_matrix"] = global_matrix
 
-        return export_cao.save(self, context, MType, **keywords)
+        return export_cao.save(self, context, vpMtype, **keywords)
 
 def menu_func_export(self, context):
     self.layout.operator(ExportCAO.bl_idname, text="ViSP .cao")

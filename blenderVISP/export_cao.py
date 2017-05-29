@@ -155,9 +155,9 @@ def write_file(MODEL_TYPE, filepath, objects, scene,
 
             # Vertices
             for v in me_verts:
-                # fw('v %.6f %.6f %.6f\n' % v.co[:])
                 vertices.append(v.co[:])
 
+            # Faces
             for f, f_index in face_index_pairs:
                 f_v = [(vi, me_verts[v_idx], l_idx) for vi, (v_idx, l_idx) in enumerate(zip(f.vertices, f.loop_indices))]
                 f_side = []
@@ -165,6 +165,7 @@ def write_file(MODEL_TYPE, filepath, objects, scene,
                 for vi, v, li in f_v:
                     f_side.append(totverts + v.index)
 
+                # Lines/Edges
                 if MODEL_TYPE == "3D Lines":
                     initialen = len(lines)
                     for i in range(0,len(f_side)-1):
