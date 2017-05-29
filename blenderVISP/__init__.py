@@ -67,23 +67,23 @@ class UIPanel(bpy.types.Panel):
         col = layout.column()
         col.prop(scn.ignit_panel, "vp_model_types", expand=False)
         
-        col.label("Point 1 coordinate (cylinder/circle) :", icon='TEXT')
+        col.label("Point 1 coordinate (cylinder/ circle) :", icon='TEXT')
         row1 = col.row()
         row1.prop(scn.ignit_panel, "vp_obj_Point1x")
         row1.prop(scn.ignit_panel, "vp_obj_Point1y")
         row1.prop(scn.ignit_panel, "vp_obj_Point1z")
 
-        col.label("Point 2 coordinate (cylinder/circle) :", icon='TEXT')
+        col.label("Point 2 coordinate (cylinder/ circle) :", icon='TEXT')
         row2 = col.row()
         row2.prop(scn.ignit_panel, "vp_obj_Point2x")
         row2.prop(scn.ignit_panel, "vp_obj_Point2y")
         row2.prop(scn.ignit_panel, "vp_obj_Point2z")
 
-        col.label("Point 3 coordinate :", icon='TEXT')
-        row2 = col.row()
-        row2.prop(scn.ignit_panel, "vp_obj_Point3x")
-        row2.prop(scn.ignit_panel, "vp_obj_Point3y")
-        row2.prop(scn.ignit_panel, "vp_obj_Point3z")
+        col.label("Point 3 coordinate (circle):", icon='TEXT')
+        row3 = col.row()
+        row3.prop(scn.ignit_panel, "vp_obj_Point3x")
+        row3.prop(scn.ignit_panel, "vp_obj_Point3y")
+        row3.prop(scn.ignit_panel, "vp_obj_Point3z")
 
         col.prop(scn.ignit_panel, "vp_heirarchy_export")
         # layout.prop(scn, 'MyInt', icon='BLENDER', toggle=True)
@@ -93,20 +93,19 @@ class UIPanel(bpy.types.Panel):
 # Button to Set Properites
 # #####################################################
 
-vpMtype = "3D Points" 
-vpPoint1 = ""
-
 class OBJECT_OT_PrintPropsButton(bpy.types.Operator):
     bl_idname = "model_types.selection"
     bl_label = "Set Properites"
- 
-    def execute(self, context):
-        global vpMtype, vpPoint1
-        scn = context.scene
-        vpMtype = scn.ignit_panel.vp_model_types
-        vpPoint1 = scn.ignit_panel.vp_obj_Point1x
 
-        print(scn.ignit_panel.vp_obj_Point1)
+    def execute(self, context):
+        scn = context.scene
+        for ob in context.selected_objects:
+            ob["vp_model_types"] = scn.ignit_panel.vp_model_types
+            ob["vp_obj_Point1"] = [scn.ignit_panel.vp_obj_Point1x, scn.ignit_panel.vp_obj_Point1y, scn.ignit_panel.vp_obj_Point1z]
+            ob["vp_obj_Point2"] = [scn.ignit_panel.vp_obj_Point2x, scn.ignit_panel.vp_obj_Point2y, scn.ignit_panel.vp_obj_Point2z]
+            ob["vp_obj_Point3"] = [scn.ignit_panel.vp_obj_Point3x, scn.ignit_panel.vp_obj_Point3y, scn.ignit_panel.vp_obj_Point3z]
+
+        # print(scn.ignit_panel.vp_obj_Point1)
         return{'FINISHED'}
 
 # #####################################################
@@ -206,7 +205,7 @@ class ExportCAO(bpy.types.Operator, ExportHelper):
                                          ).to_4x4())
         keywords["global_matrix"] = global_matrix
 
-        return export_cao.save(self, context, vpMtype, **keywords)
+        return export_cao.save(self, context, **keywords)
 
 def menu_func_export(self, context):
     self.layout.operator(ExportCAO.bl_idname, text="ViSP .cao")

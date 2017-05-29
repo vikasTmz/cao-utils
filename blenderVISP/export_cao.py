@@ -36,9 +36,13 @@ V1,
 }
 """
 
-TEMPLATE_LINES = "%d ,%d"
+TEMPLATE_LINES = "%d %d"
 
 TEMPLATE_VERTEX = "%f %f %f"
+
+TEMPLATE_CYLINDER = "%d %d %f"
+
+TEMPLATE_CIRCLE = "%f %d %d %d"
 
 # #####################################################
 # Utils
@@ -56,7 +60,7 @@ def generate_vertices(v):
     return  TEMPLATE_VERTEX % (v[0], v[1], v[2])
 
 def generate_lines(l):
-    return TEMPLATE_LINES % (l[0] ,l[1])
+    return TEMPLATE_LINES % (l[0], l[1])
 
 def generate_facelines(fl):
     return " ".join(map(str,[x for x in fl]))
@@ -64,8 +68,13 @@ def generate_facelines(fl):
 def generate_faces(v):
     return str(len(v)) + " " + " ".join(map(str,[x-1 for x in v]))
 
+def generate_cylinders(c):
+    return TEMPLATE_CYLINDER % (c[0], c[1], c[2])
 
-def write_file(MODEL_TYPE, filepath, objects, scene,
+def generate_circles(c):
+    return TEMPLATE_CIRCLE % (c[0], c[1], c[2], c[3])
+
+def write_file(filepath, objects, scene,
                EXPORT_TRI=False,
                EXPORT_EDGES=False,
                EXPORT_NORMALS=False,
@@ -95,6 +104,8 @@ def write_file(MODEL_TYPE, filepath, objects, scene,
     faces = []
     lines = []
     facelines = []
+    gcylinders = []
+    gcircles = []
 
     # Get all meshes
     for ob_main in objects:
@@ -112,91 +123,100 @@ def write_file(MODEL_TYPE, filepath, objects, scene,
         else:
             obs = [(ob_main, ob_main.matrix_world)]
 
-        for ob, ob_mat in obs:
+        if ob_main["vp_model_types"] in ["3D Points","3D Lines"]:
+            for ob, ob_mat in obs:
 
-            try:
-                me = ob.to_mesh(scene, EXPORT_APPLY_MODIFIERS, 'PREVIEW', calc_tessface=False)
-            except RuntimeError:
-                me = None
+                try:
+                    me = ob.to_mesh(scene, EXPORT_APPLY_MODIFIERS, 'PREVIEW', calc_tessface=False)
+                except RuntimeError:
+                    me = None
 
-            if me is None:
-                continue
+                if me is None:
+                    continue
 
-            me.transform(EXPORT_GLOBAL_MATRIX * ob_mat)
+                me.transform(EXPORT_GLOBAL_MATRIX * ob_mat)
 
-            if EXPORT_TRI:
-                mesh_triangulate(me)
+                if EXPORT_TRI:
+                    mesh_triangulate(me)
 
-            me_verts = me.vertices[:]
+                me_verts = me.vertices[:]
 
-            face_index_pairs = [(face, index) for index, face in enumerate(me.polygons)]
+                face_index_pairs = [(face, index) for index, face in enumerate(me.polygons)]
 
-            if EXPORT_EDGES:
-                edges = me.edges
-            else:
-                edges = []
+                if EXPORT_EDGES:
+                    edges = me.edges
+                else:
+                    edges = []
 
-            if not (len(face_index_pairs) + len(edges) + len(me.vertices)):
+                if not (len(face_index_pairs) + len(edges) + len(me.vertices)):
+                    bpy.data.meshes.remove(me)
+                    continue  # ignore this mesh.
+
+                smooth_groups, smooth_groups_tot = (), 0
+
+                # no materials
+                if smooth_groups:
+                    sort_func = lambda a: smooth_groups[a[1] if a[0].use_smooth else False]
+                else:
+                    sort_func = lambda a: a[0].use_smooth
+
+                face_index_pairs.sort(key=sort_func)
+                del sort_func
+
+                # fw('# %s\n' % (ob_main.name))
+
+                # Vertices
+                for v in me_verts:
+                    vertices.append(v.co[:])
+
+                # Faces
+                for f, f_index in face_index_pairs:
+                    f_v = [(vi, me_verts[v_idx], l_idx) for vi, (v_idx, l_idx) in enumerate(zip(f.vertices, f.loop_indices))]
+                    f_side = []
+
+                    for vi, v, li in f_v:
+                        f_side.append(totverts + v.index)
+
+                    # Lines/Edges
+                    if ob_main["vp_model_types"] == "3D Lines":
+                        initialen = len(lines)
+                        for i in range(0,len(f_side)-1):
+                            lines.append([f_side[i]-1,f_side[i+1]-1])
+                        lines.append([f_side[len(f_side)-1]-1,f_side[0]-1])
+
+                        facelines.append([len(lines)-initialen, list(range(initialen, len(lines)))])
+
+                    else:
+                        faces.append(f_side)
+
+                # Make the indices global rather then per mesh
+                totverts += len(me_verts)
+
+                # clean up
                 bpy.data.meshes.remove(me)
-                continue  # ignore this mesh.
 
-            smooth_groups, smooth_groups_tot = (), 0
+        elif ob_main["vp_model_types"] == "3D Cylinders":
+            gcylinders.append([len(vertices), len(vertices)+1, ob_main.dimensions[0]]) # Get radius
+            vertices.append(ob_main["vp_obj_Point1"])
+            vertices.append(ob_main["vp_obj_Point2"])
+            totverts += 2
 
-            # no materials
-            if smooth_groups:
-                sort_func = lambda a: smooth_groups[a[1] if a[0].use_smooth else False]
-            else:
-                sort_func = lambda a: a[0].use_smooth
-
-            face_index_pairs.sort(key=sort_func)
-            del sort_func
-
-            # fw('# %s\n' % (ob_main.name))
-
-            # Vertices
-            for v in me_verts:
-                vertices.append(v.co[:])
-
-            # Faces
-            for f, f_index in face_index_pairs:
-                f_v = [(vi, me_verts[v_idx], l_idx) for vi, (v_idx, l_idx) in enumerate(zip(f.vertices, f.loop_indices))]
-                f_side = []
-
-                for vi, v, li in f_v:
-                    f_side.append(totverts + v.index)
-
-                # Lines/Edges
-                if MODEL_TYPE == "3D Lines":
-                    initialen = len(lines)
-                    for i in range(0,len(f_side)-1):
-                        lines.append([f_side[i]-1,f_side[i+1]-1])
-                    lines.append([f_side[len(f_side)-1]-1,f_side[0]-1])
-
-                    facelines.append([len(lines)-initialen,list(range(initialen,len(lines)))])
-
-                faces.append(f_side)
-
-            # Make the indices global rather then per mesh
-            totverts += len(me_verts)
-
-            # clean up
-            bpy.data.meshes.remove(me)
+        elif ob_main["vp_model_types"] == "3D Circles":
+            gcircles.append([ob_main.dimensions[0], len(vertices), len(vertices)+1, len(vertices)+2])
+            vertices.append(ob_main["vp_obj_Point1"])
+            vertices.append(ob_main["vp_obj_Point2"])
+            vertices.append(ob_main["vp_obj_Point3"])
+            totverts += 3
 
         if ob_main.dupli_type != 'NONE':
             ob_main.dupli_list_clear()
 
-    if MODEL_TYPE == "3D Points":
-        nlines = nfacelines = 0
-        npoints = len(vertices)
-        nfacepoints = len(faces)
-        lines = facelines = []
-
-    elif MODEL_TYPE == "3D Lines":
-        nfacepoints = 0
-        nlines = len(lines)
-        nfacelines = len(facelines)
-        npoints = len(vertices)
-        faces = []
+    npoints = len(vertices)
+    nfacepoints = len(faces)
+    nlines = len(lines)
+    nfacelines = len(facelines)
+    ncylinders = len(gcylinders)
+    ncircles = len(gcircles)
 
     text = TEMPLATE_CAO_FILE % {
         "nPoints"  : npoints,
@@ -207,10 +227,10 @@ def write_file(MODEL_TYPE, filepath, objects, scene,
         "facelines" : "\n".join(generate_facelines(fl) for fl in facelines),
         "nFacepoints" : nfacepoints,
         "facepoints" : "\n".join(generate_faces(f) for f in faces),
-        "nCylinder" : 0,
-        "cylinders" : "",
-        "nCircles" : 0,
-        "circles" : "" 
+        "nCylinder" : ncylinders,
+        "cylinders" : "\n".join(generate_cylinders(c) for c in gcylinders),
+        "nCircles" : ncircles,
+        "circles" : "\n".join(generate_circles(c) for c in gcircles)
     }
 
     fw(text)
@@ -227,7 +247,7 @@ def write_file(MODEL_TYPE, filepath, objects, scene,
     print("Export time: %.2f" % (time.time() - time1))
 
 
-def _write(context, MODEL_TYPE, filepath,
+def _write(context, filepath,
               EXPORT_TRI,  # ok
               EXPORT_EDGES,
               EXPORT_NORMALS,  # not yet
@@ -260,7 +280,7 @@ def _write(context, MODEL_TYPE, filepath,
         full_path = ''.join(context_name)
 
         # EXPORT THE FILE.
-        write_file(MODEL_TYPE, full_path, objects, scene,
+        write_file(full_path, objects, scene,
                    EXPORT_TRI,
                    EXPORT_EDGES,
                    EXPORT_NORMALS,
@@ -270,7 +290,7 @@ def _write(context, MODEL_TYPE, filepath,
 
     scene.frame_set(orig_frame, 0.0)
 
-def save(operator, context, model_type, filepath="",
+def save(operator, context, filepath="",
          use_triangles=False,
          use_edges=True,
          use_normals=False,
@@ -279,7 +299,7 @@ def save(operator, context, model_type, filepath="",
          global_matrix=None,
          ):
 
-    _write(context, model_type, filepath,
+    _write(context, filepath,
            EXPORT_TRI=use_triangles,
            EXPORT_EDGES=use_edges,
            EXPORT_NORMALS=use_normals,
