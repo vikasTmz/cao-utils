@@ -1,4 +1,4 @@
-# <pep8 compliant>
+# <pep8>
 
 import os
 import time
@@ -236,7 +236,7 @@ def write_file(MODEL_TYPE, filepath, objects, scene,
     # copy all collected files.
     bpy_extras.io_utils.path_reference_copy(copy_set)
 
-    print("OBJ Export time: %.2f" % (time.time() - time1))
+    print("CAO Export time: %.2f" % (time.time() - time1))
 
 
 def _write(context, MODEL_TYPE, filepath,

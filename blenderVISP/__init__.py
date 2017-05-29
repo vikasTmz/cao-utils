@@ -13,8 +13,8 @@ bl_info = {
 
 if "bpy" in locals():
     import imp
-    if "export_obj" in locals():
-        imp.reload(export_obj)
+    if "export_cao" in locals():
+        imp.reload(export_cao)
 
 import bpy
 from bpy.props import *
@@ -32,7 +32,6 @@ def initSceneProperties(scn):
     bpy.types.Scene.MyInt = IntProperty(
         name = "Integer", 
         description = "Enter an integer")
-    scn['MyInt'] = 17
  
     bpy.types.Scene.MyFloat = FloatProperty(
         name = "Float", 
@@ -44,18 +43,15 @@ def initSceneProperties(scn):
     bpy.types.Scene.MyBool = BoolProperty(
         name = "Boolean", 
         description = "True or False?")
-    scn['MyBool'] = True
  
     bpy.types.Scene.MyEnum = EnumProperty(
         items = [('Eine', 'Un', 'One'), 
                  ('Zwei', 'Deux', 'Two'),
                  ('Drei', 'Trois', 'Three')],
         name = "Ziffer")
-    scn['MyEnum'] = 2
  
     bpy.types.Scene.MyString = StringProperty(
         name = "String")
-    scn['MyString'] = "Lorem ipsum dolor sit amet"
     return
  
 class IgnitProperties(bpy.types.PropertyGroup):
@@ -101,15 +97,15 @@ class OBJECT_OT_PrintPropsButton(bpy.types.Operator):
 # ExportCAO
 # #####################################################
 
-class ExportOBJ(bpy.types.Operator, ExportHelper):
+class ExportCAO(bpy.types.Operator, ExportHelper):
 
-    bl_idname = "export_scene.obj"
+    bl_idname = "export_scene.cao"
     bl_label = 'Export .cao'
     bl_options = {'PRESET'}
 
     filename_ext = ".cao"
     filter_glob = StringProperty(
-            default="*.obj",
+            default="*.cao",
             options={'HIDDEN'},
             )
 
@@ -178,7 +174,7 @@ class ExportOBJ(bpy.types.Operator, ExportHelper):
     check_extension = True
 
     def execute(self, context):
-        from . import export_obj
+        from . import export_cao
 
         from mathutils import Matrix
         keywords = self.as_keywords(ignore=("axis_forward",
@@ -194,10 +190,10 @@ class ExportOBJ(bpy.types.Operator, ExportHelper):
                                          ).to_4x4())
         keywords["global_matrix"] = global_matrix
 
-        return export_obj.save(self, context, MType, **keywords)
+        return export_cao.save(self, context, MType, **keywords)
 
 def menu_func_export(self, context):
-    self.layout.operator(ExportOBJ.bl_idname, text="ViSP .cao")
+    self.layout.operator(ExportCAO.bl_idname, text="ViSP .cao")
 
 
 def register():
