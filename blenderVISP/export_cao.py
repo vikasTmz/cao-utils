@@ -86,11 +86,9 @@ def write_file(MODEL_TYPE, filepath, objects, scene,
     # Write Header
     fw('# Blender v%s CAO File\n' % (bpy.app.version_string))
 
-    # Initialize totals, these are updated each object
+    # Initialize
     totverts = 1
-
     face_vert_index = 1
-
     copy_set = set()
 
     vertices = []
@@ -103,18 +101,14 @@ def write_file(MODEL_TYPE, filepath, objects, scene,
 
         # ignore dupli children
         if ob_main.parent and ob_main.parent.dupli_type in {'VERTS', 'FACES'}:
-
-            print(ob_main.name, 'is a dupli child - ignoring')
             continue
 
         obs = []
         if ob_main.dupli_type != 'NONE':
-
-            print('creating dupli_list on', ob_main.name)
+            # print('creating dupli_list on', ob_main.name)
             ob_main.dupli_list_create(scene)
             obs = [(dob.object, dob.matrix) for dob in ob_main.dupli_list]
 
-            print(ob_main.name, 'has', len(obs), 'dupli children')
         else:
             obs = [(ob_main, ob_main.matrix_world)]
 
@@ -131,12 +125,10 @@ def write_file(MODEL_TYPE, filepath, objects, scene,
             me.transform(EXPORT_GLOBAL_MATRIX * ob_mat)
 
             if EXPORT_TRI:
-                # _must_ do this first since it re-allocs arrays
                 mesh_triangulate(me)
 
             me_verts = me.vertices[:]
 
-            # Make our own list so it can be sorted to reduce context switching
             face_index_pairs = [(face, index) for index, face in enumerate(me.polygons)]
 
             if EXPORT_EDGES:
@@ -144,10 +136,9 @@ def write_file(MODEL_TYPE, filepath, objects, scene,
             else:
                 edges = []
 
-            if not (len(face_index_pairs) + len(edges) + len(me.vertices)):  # Make sure there is somthing to write
-                # clean up
+            if not (len(face_index_pairs) + len(edges) + len(me.vertices)):
                 bpy.data.meshes.remove(me)
-                continue  # dont bother with this mesh.
+                continue  # ignore this mesh.
 
             smooth_groups, smooth_groups_tot = (), 0
 
@@ -162,19 +153,16 @@ def write_file(MODEL_TYPE, filepath, objects, scene,
 
             # fw('# %s\n' % (ob_main.name))
 
-            # Vert
+            # Vertices
             for v in me_verts:
                 # fw('v %.6f %.6f %.6f\n' % v.co[:])
                 vertices.append(v.co[:])
 
             for f, f_index in face_index_pairs:
-                #f_v = [(vi, me_verts[v_idx]) for vi, v_idx in enumerate(f.vertices)]
                 f_v = [(vi, me_verts[v_idx], l_idx) for vi, (v_idx, l_idx) in enumerate(zip(f.vertices, f.loop_indices))]
                 f_side = []
 
-                # fw('f')
                 for vi, v, li in f_v:
-                    # fw(" %d" % (totverts + v.index))
                     f_side.append(totverts + v.index)
 
                 if MODEL_TYPE == "3D Lines":
@@ -186,7 +174,6 @@ def write_file(MODEL_TYPE, filepath, objects, scene,
                     facelines.append([len(lines)-initialen,list(range(initialen,len(lines)))])
 
                 faces.append(f_side)
-                # fw('\n')
 
             # Make the indices global rather then per mesh
             totverts += len(me_verts)
@@ -236,7 +223,7 @@ def write_file(MODEL_TYPE, filepath, objects, scene,
     # copy all collected files.
     bpy_extras.io_utils.path_reference_copy(copy_set)
 
-    print("CAO Export time: %.2f" % (time.time() - time1))
+    print("Export time: %.2f" % (time.time() - time1))
 
 
 def _write(context, MODEL_TYPE, filepath,
@@ -271,7 +258,6 @@ def _write(context, MODEL_TYPE, filepath,
 
         full_path = ''.join(context_name)
 
-        # erm... bit of a problem here, this can overwrite files when exporting frames. not too bad.
         # EXPORT THE FILE.
         write_file(MODEL_TYPE, full_path, objects, scene,
                    EXPORT_TRI,

@@ -28,40 +28,15 @@ from bpy_extras.io_utils import (ImportHelper,
 # UI Panel
 # #####################################################
 
-def initSceneProperties(scn):
-    bpy.types.Scene.MyInt = IntProperty(
-        name = "Integer", 
-        description = "Enter an integer")
- 
-    bpy.types.Scene.MyFloat = FloatProperty(
-        name = "Float", 
-        description = "Enter a float",
-        default = 33.33,
-        min = -100,
-        max = 100)
- 
-    bpy.types.Scene.MyBool = BoolProperty(
-        name = "Boolean", 
-        description = "True or False?")
- 
-    bpy.types.Scene.MyEnum = EnumProperty(
-        items = [('Eine', 'Un', 'One'), 
-                 ('Zwei', 'Deux', 'Two'),
-                 ('Drei', 'Trois', 'Three')],
-        name = "Ziffer")
- 
-    bpy.types.Scene.MyString = StringProperty(
-        name = "String")
-    return
- 
 class IgnitProperties(bpy.types.PropertyGroup):
     model_types = bpy.props.EnumProperty(
         name = "Model export types",
         description = "Model export types",
         items = [
-            ("3D Points" , "3D Points" , "Description..."),
-            ("3D Lines", "3D Lines", "other description"),
-            ("3D Cylinders", "3D Cylinders", "Some other description")])
+            ("3D Points" , "3D Points" , "Export as 3d points"),
+            ("3D Lines", "3D Lines", "Export as 3d lines"),
+            ("3D Cylinders", "3D Cylinders", "Export as 3d cylinders"),
+            ("3D Circles", "3D Circles", "Export as 3d circles")])
 
 class UIPanel(bpy.types.Panel):
     bl_label = "ViSP CAD Properites Panel"
