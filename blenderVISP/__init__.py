@@ -17,12 +17,14 @@ if "bpy" in locals():
         imp.reload(export_cao)
 
 import bpy
+import bmesh
 from bpy.props import *
 from bpy_extras.io_utils import (ImportHelper,
                                  ExportHelper,
                                  path_reference_mode,
                                  axis_conversion,
                                  )
+from mathutils import Vector
 
 # #####################################################
 # UI Panel
@@ -39,7 +41,7 @@ class IgnitProperties(bpy.types.PropertyGroup):
             ("3D Circles", "3D Circles", "Export as 3d circles")])
 
     vp_heirarchy_export = BoolProperty(
-        name = "Heirarchy", 
+        name = "Heirarchy Export", 
         description = "True or False?")
 
     vp_obj_Point1x = FloatProperty(name = "X", description = "Point 1 x coordinate", default = 0.000)
@@ -53,7 +55,7 @@ class IgnitProperties(bpy.types.PropertyGroup):
     vp_obj_Point3x = FloatProperty(name = "X", description = "Point 3 x coordinate", default = 0.000)
     vp_obj_Point3y = FloatProperty(name = "Y", description = "Point 3 y coordinate", default = 0.000)
     vp_obj_Point3z = FloatProperty(name = "Z", description = "Point 3 z coordinate", default = 0.000)
-    # vp_obj_Point1 = StringProperty(name = "Point 1 coordinate", default = "(0.00,0.00,0.00)",description = "Point 1 coord")
+    vp_radius = FloatProperty(name = "", default = 0,description = "radius")
 
 
 class UIPanel(bpy.types.Panel):
@@ -85,8 +87,13 @@ class UIPanel(bpy.types.Panel):
         row3.prop(scn.ignit_panel, "vp_obj_Point3y")
         row3.prop(scn.ignit_panel, "vp_obj_Point3z")
 
+        col.label("\n")
+        row4 = col.row()
+        row4.operator("my.button", text="Calculate Radius")
+        row4.prop(scn.ignit_panel, "vp_radius")
+
         col.prop(scn.ignit_panel, "vp_heirarchy_export")
-        # layout.prop(scn, 'MyInt', icon='BLENDER', toggle=True)
+
         layout.operator("model_types.selection")
  
 # #####################################################
@@ -103,10 +110,34 @@ class OBJECT_OT_PrintPropsButton(bpy.types.Operator):
             ob["vp_model_types"] = scn.ignit_panel.vp_model_types
             ob["vp_obj_Point1"] = [scn.ignit_panel.vp_obj_Point1x, scn.ignit_panel.vp_obj_Point1y, scn.ignit_panel.vp_obj_Point1z]
             ob["vp_obj_Point2"] = [scn.ignit_panel.vp_obj_Point2x, scn.ignit_panel.vp_obj_Point2y, scn.ignit_panel.vp_obj_Point2z]
-            ob["vp_obj_Point3"] = [scn.ignit_panel.vp_obj_Point3x, scn.ignit_panel.vp_obj_Point3y, scn.ignit_panel.vp_obj_Point3z]
+            ob["vp_obj_Point3"] = [scn.ignit_panel.vp_obj_Point3x, scn.ignit_panel.vp_obj_Point3y, scn.ignit_panel.vp_obj_Point3z] # Will be ignored for cylinder
+            ob["vp_radius"] = scn.ignit_panel.vp_radius
 
-        # print(scn.ignit_panel.vp_obj_Point1)
         return{'FINISHED'}
+
+class OBJECT_OT_Button(bpy.types.Operator):
+    bl_idname = "my.button"
+    bl_label = "Button"
+ 
+    def execute(self, context):
+        scn = context.scene
+        for ob in context.selected_objects:
+            if scn.ignit_panel.vp_model_types in ["3D Cylinders","3D Circles"]:
+                # Calculate Radius
+                ob_edit = context.edit_object
+                me = ob_edit.data
+                bm = bmesh.from_edit_mesh(me)
+                selected = [v for v in bm.verts if v.select]
+                vsum = Vector()
+                for v in selected:
+                    vsum += v.co
+                midPoint = vsum/len(selected)
+                distances = [(v.co-midPoint).length for v in selected]
+                radius = sum(distances)/len(distances)
+                ob["vp_radius"] = radius
+                scn.ignit_panel.vp_radius = radius
+
+        return{'FINISHED'} 
 
 # #####################################################
 # ExportCAO

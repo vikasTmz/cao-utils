@@ -123,86 +123,90 @@ def write_file(filepath, objects, scene,
         else:
             obs = [(ob_main, ob_main.matrix_world)]
 
-        if ob_main["vp_model_types"] in ["3D Points","3D Lines"]:
-            for ob, ob_mat in obs:
+        try:  
+            ob_main["vp_model_types"]
+        except:
+            continue
 
-                try:
-                    me = ob.to_mesh(scene, EXPORT_APPLY_MODIFIERS, 'PREVIEW', calc_tessface=False)
-                except RuntimeError:
-                    me = None
+        for ob, ob_mat in obs:
 
-                if me is None:
-                    continue
+            try:
+                me = ob.to_mesh(scene, EXPORT_APPLY_MODIFIERS, 'PREVIEW', calc_tessface=False)
+            except RuntimeError:
+                me = None
 
-                me.transform(EXPORT_GLOBAL_MATRIX * ob_mat)
+            if me is None or ob_main["vp_model_types"] not in ["3D Points","3D Lines"]:
+                continue
 
-                if EXPORT_TRI:
-                    mesh_triangulate(me)
+            me.transform(EXPORT_GLOBAL_MATRIX * ob_mat)
 
-                me_verts = me.vertices[:]
+            if EXPORT_TRI:
+                mesh_triangulate(me)
 
-                face_index_pairs = [(face, index) for index, face in enumerate(me.polygons)]
+            me_verts = me.vertices[:]
 
-                if EXPORT_EDGES:
-                    edges = me.edges
-                else:
-                    edges = []
+            face_index_pairs = [(face, index) for index, face in enumerate(me.polygons)]
 
-                if not (len(face_index_pairs) + len(edges) + len(me.vertices)):
-                    bpy.data.meshes.remove(me)
-                    continue  # ignore this mesh.
+            if EXPORT_EDGES:
+                edges = me.edges
+            else:
+                edges = []
 
-                smooth_groups, smooth_groups_tot = (), 0
-
-                # no materials
-                if smooth_groups:
-                    sort_func = lambda a: smooth_groups[a[1] if a[0].use_smooth else False]
-                else:
-                    sort_func = lambda a: a[0].use_smooth
-
-                face_index_pairs.sort(key=sort_func)
-                del sort_func
-
-                # fw('# %s\n' % (ob_main.name))
-
-                # Vertices
-                for v in me_verts:
-                    vertices.append(v.co[:])
-
-                # Faces
-                for f, f_index in face_index_pairs:
-                    f_v = [(vi, me_verts[v_idx], l_idx) for vi, (v_idx, l_idx) in enumerate(zip(f.vertices, f.loop_indices))]
-                    f_side = []
-
-                    for vi, v, li in f_v:
-                        f_side.append(totverts + v.index)
-
-                    # Lines/Edges
-                    if ob_main["vp_model_types"] == "3D Lines":
-                        initialen = len(lines)
-                        for i in range(0,len(f_side)-1):
-                            lines.append([f_side[i]-1,f_side[i+1]-1])
-                        lines.append([f_side[len(f_side)-1]-1,f_side[0]-1])
-
-                        facelines.append([len(lines)-initialen, list(range(initialen, len(lines)))])
-
-                    else:
-                        faces.append(f_side)
-
-                # Make the indices global rather then per mesh
-                totverts += len(me_verts)
-
-                # clean up
+            if not (len(face_index_pairs) + len(edges) + len(me.vertices)):
                 bpy.data.meshes.remove(me)
+                continue  # ignore this mesh.
 
-        elif ob_main["vp_model_types"] == "3D Cylinders":
-            gcylinders.append([len(vertices), len(vertices)+1, ob_main.dimensions[0]]) # Get radius
+            smooth_groups, smooth_groups_tot = (), 0
+
+            # no materials
+            if smooth_groups:
+                sort_func = lambda a: smooth_groups[a[1] if a[0].use_smooth else False]
+            else:
+                sort_func = lambda a: a[0].use_smooth
+
+            face_index_pairs.sort(key=sort_func)
+            del sort_func
+
+            # fw('# %s\n' % (ob_main.name))
+
+            # Vertices
+            for v in me_verts:
+                vertices.append(v.co[:])
+
+            # Faces
+            for f, f_index in face_index_pairs:
+                f_v = [(vi, me_verts[v_idx], l_idx) for vi, (v_idx, l_idx) in enumerate(zip(f.vertices, f.loop_indices))]
+                f_side = []
+
+                for vi, v, li in f_v:
+                    f_side.append(totverts + v.index)
+
+                # Lines/Edges
+                if ob_main["vp_model_types"] == "3D Lines":
+                    initialen = len(lines)
+                    for i in range(0,len(f_side)-1):
+                        lines.append([f_side[i]-1,f_side[i+1]-1])
+                    lines.append([f_side[len(f_side)-1]-1,f_side[0]-1])
+
+                    facelines.append([len(lines)-initialen, list(range(initialen, len(lines)))])
+
+                else:
+                    faces.append(f_side)
+
+            # Make the indices global rather then per mesh
+            totverts += len(me_verts)
+
+            # clean up
+            bpy.data.meshes.remove(me)
+
+        if ob_main["vp_model_types"] == "3D Cylinders":
+            gcylinders.append([len(vertices), len(vertices)+1, ob_main["vp_radius"]]) # Get radius
             vertices.append(ob_main["vp_obj_Point1"])
             vertices.append(ob_main["vp_obj_Point2"])
             totverts += 2
 
         elif ob_main["vp_model_types"] == "3D Circles":
-            gcircles.append([ob_main.dimensions[0], len(vertices), len(vertices)+1, len(vertices)+2])
+            gcircles.append([ob_main["vp_radius"], len(vertices), len(vertices)+1, len(vertices)+2])
             vertices.append(ob_main["vp_obj_Point1"])
             vertices.append(ob_main["vp_obj_Point2"])
             vertices.append(ob_main["vp_obj_Point3"])
