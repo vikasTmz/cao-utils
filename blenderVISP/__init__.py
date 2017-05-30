@@ -92,7 +92,7 @@ class UIPanel(bpy.types.Panel):
         row4.operator("my.button", text="Calculate Radius")
         row4.prop(scn.ignit_panel, "vp_radius")
 
-        col.prop(scn.ignit_panel, "vp_heirarchy_export")
+        # col.prop(scn.ignit_panel, "vp_heirarchy_export")
 
         layout.operator("model_types.selection")
  
