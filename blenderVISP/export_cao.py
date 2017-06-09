@@ -2,6 +2,7 @@
 
 import os
 import time
+import re
 
 import bpy
 import mathutils
@@ -135,7 +136,7 @@ def write_file(filepath, objects, scene,
             except RuntimeError:
                 me = None
 
-            if me is None or ob_main["vp_model_types"] not in ["3D Points","3D Lines"]:
+            if me is None or ob_main["vp_model_types"] not in ["3D Faces","3D Lines"]:
                 continue
 
             me.transform(EXPORT_GLOBAL_MATRIX * ob_mat)
@@ -237,14 +238,12 @@ def write_file(filepath, objects, scene,
         "circles" : "\n".join(generate_circles(c) for c in gcircles)
     }
 
+    text = text.replace(',', '').replace('{', '').replace('}', '').replace('{', '').replace('[', '').replace(']', '')
+    text = "".join([s for s in text.strip().splitlines(True) if s.strip()])
+
     fw(text)
     file.close()
 
-    os.system("sed -i 's/,//g' " + filepath)
-    os.system("sed -i 's/\(\[\|\]\)//g' " + filepath)
-    os.system("sed -i 's/{//g' " + filepath)
-    os.system("sed -i 's/}//g' " + filepath)
-    os.system("sed -i '/^$/d' " + filepath)
     # copy all collected files.
     bpy_extras.io_utils.path_reference_copy(copy_set)
 
