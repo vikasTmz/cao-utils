@@ -36,9 +36,9 @@ if "bpy" in locals():
     _modules_loaded[:] = [reload(val) for val in _modules_loaded]
     del reload
 
-# #####################################################
+# #########################################
 # ExportCAO
-# #####################################################
+# #########################################
 
 class ExportCAO(bpy.types.Operator, ExportHelper):
 
@@ -118,7 +118,7 @@ class ExportCAO(bpy.types.Operator, ExportHelper):
 
     def execute(self, context):
         from . import export_cao
-
+        # TODO: Select all enabled items, deselect remaining
         from mathutils import Matrix
         keywords = self.as_keywords(ignore=("axis_forward",
                                             "axis_up",
@@ -135,6 +135,10 @@ class ExportCAO(bpy.types.Operator, ExportHelper):
 
         return export_cao.save(self, context, **keywords)
 
+# #########################################
+# Register
+# #########################################
+
 def menu_func_export(self, context):
     self.layout.operator(ExportCAO.bl_idname, text="ViSP .cao")
 
@@ -146,6 +150,8 @@ def register():
         
         if mod == _modules_loaded[0]:
             bpy.types.Scene.ignit_panel = bpy.props.PointerProperty(type=mod.classes[0])
+            bpy.types.Scene.custom_vertices = CollectionProperty(type=mod.classes[0])
+            bpy.types.Scene.custom_vertices_index = IntProperty()
         elif mod == _modules_loaded[1]:
             bpy.types.Scene.custom_circle = CollectionProperty(type=mod.classes[0])
             bpy.types.Scene.custom_circle_index = IntProperty()

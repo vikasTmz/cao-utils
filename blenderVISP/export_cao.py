@@ -139,7 +139,7 @@ def write_file(filepath, objects, scene,
             if me is None or ob_main["vp_model_types"] not in ["3D Faces","3D Lines"]:
                 continue
 
-            me.transform(EXPORT_GLOBAL_MATRIX * ob_mat)
+            me.transform(EXPORT_GLOBAL_MATRIX * ob_mat)# Translate to World Coordinate System
 
             if EXPORT_TRI:
                 mesh_triangulate(me)
