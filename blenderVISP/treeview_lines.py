@@ -3,14 +3,14 @@ from bpy.props import IntProperty, CollectionProperty
 from bpy.types import Panel, UIList
 
 # #########################################
-# Register
+# TreeView 
 # #########################################
 
 def get_activeSceneObject():
     return bpy.context.scene.objects.active.name
 
-class Uilist_actions_cylinder(bpy.types.Operator):
-    bl_idname = "customcylinder.list_action"
+class Uilist_actions_lines(bpy.types.Operator):
+    bl_idname = "customlines.list_action"
     bl_label = "List Action"
 
     action = bpy.props.EnumProperty(
@@ -26,62 +26,62 @@ class Uilist_actions_cylinder(bpy.types.Operator):
     def invoke(self, context, event):
 
         scn = context.scene
-        idx = scn.custom_cylinder_index
+        idx = scn.custom_lines_index
 
         try:
-            item = scn.custom_cylinder[idx]
+            item = scn.custom_lines[idx]
         except IndexError:
             pass
 
         else:
-            if self.action == 'DOWN' and idx < len(scn.custom_cylinder) - 1:
-                item_next = scn.custom_cylinder[idx+1].name
-                scn.custom_cylinder_index += 1
-                info = 'Item %d selected' % (scn.custom_cylinder_index + 1)
+            if self.action == 'DOWN' and idx < len(scn.custom_lines) - 1:
+                item_next = scn.custom_lines[idx+1].name
+                scn.custom_lines_index += 1
+                info = 'Item %d selected' % (scn.custom_lines_index + 1)
                 self.report({'INFO'}, info)
 
             elif self.action == 'UP' and idx >= 1:
-                item_prev = scn.custom_cylinder[idx-1].name
-                scn.custom_cylinder_index -= 1
-                info = 'Item %d selected' % (scn.custom_cylinder_index + 1)
+                item_prev = scn.custom_lines[idx-1].name
+                scn.custom_lines_index -= 1
+                info = 'Item %d selected' % (scn.custom_lines_index + 1)
                 self.report({'INFO'}, info)
 
             elif self.action == 'REMOVE':
-                info = 'Item %s removed from list' % (scn.custom_cylinder[scn.custom_cylinder_index].name)
+                info = 'Item %s removed from list' % (scn.custom_lines[scn.custom_lines_index].name)
                 bpy.ops.object.select_all(action='DESELECT')
-                bpy.data.objects[scn.custom_cylinder[scn.custom_cylinder_index].name].select = True
+                bpy.data.objects[scn.custom_lines[scn.custom_lines_index].name].select = True
                 bpy.ops.object.delete()
-                scn.custom_cylinder_index -= 1
+                scn.custom_lines_index -= 1
                 self.report({'INFO'}, info)
-                scn.custom_cylinder.remove(idx)
+                scn.custom_lines.remove(idx)
             elif self.action == 'DISABLE':
                 for i in range(0,idx+1):
-                    scn.custom_cylinder[i].enabled = False
+                    scn.custom_lines[i].enabled = False
             elif self.action == 'ENABLE':
                 for i in range(0,idx+1):
-                    scn.custom_cylinder[i].enabled = True
+                    scn.custom_lines[i].enabled = True
         return {"FINISHED"}
 
 # #########################################
 # Draw Panels and Button
 # #########################################
 
-class UL_items_cylinder(UIList):
+class UL_items_lines(UIList):
 
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
         split = layout.split(0.3)
         split.label("%d" % (index))
-        split.prop(item, "name", text="%s" % (item.enabled), emboss=False, translate=False, icon='BORDER_RECT')
+        split.prop(item, "name", text="%s" % (item.enabled), emboss=False, translate=True, icon='BORDER_RECT')
 
     def invoke(self, context, event):
         pass   
 
-class UIListPanelExample_cylinder(Panel):
+class UIListPanelExample_lines(Panel):
     """Creates a Panel in the Object properties window"""
-    bl_idname = 'OBJECT_PT_my_panel_cylinder'
+    bl_idname = 'OBJECT_PT_my_panel_lines'
     bl_space_type = "VIEW_3D"
     bl_region_type = "TOOLS"
-    bl_label = "3D Cylinders"
+    bl_label = "3D Lines"
 
     def draw(self, context):
         layout = self.layout
@@ -89,24 +89,24 @@ class UIListPanelExample_cylinder(Panel):
 
         rows = 2
         row = layout.row()
-        row.template_list("UL_items_cylinder", "", scn, "custom_cylinder", scn, "custom_cylinder_index", rows=rows)
+        row.template_list("UL_items_lines", "", scn, "custom_lines", scn, "custom_lines_index", rows=rows)
 
         col = row.column(align=True)
-        col.operator("customcylinder.list_action", icon='ZOOMOUT', text="").action = 'REMOVE'
+        col.operator("customlines.list_action", icon='ZOOMOUT', text="").action = 'REMOVE'
         col.separator()
-        col.operator("customcylinder.list_action", icon='TRIA_UP', text="").action = 'UP'
-        col.operator("customcylinder.select_item", icon="UV_SYNC_SELECT")
-        col.operator("customcylinder.list_action", icon='TRIA_DOWN', text="").action = 'DOWN'
+        col.operator("customlines.list_action", icon='TRIA_UP', text="").action = 'UP'
+        col.operator("customlines.select_item", icon="UV_SYNC_SELECT")
+        col.operator("customlines.list_action", icon='TRIA_DOWN', text="").action = 'DOWN'
         col.separator()
-        col.operator("customcylinder.list_action", icon='VISIBLE_IPO_ON', text="Enable All").action = 'ENABLE'
-        col.operator("customcylinder.list_action", icon='VISIBLE_IPO_OFF', text="Disable All").action = 'DISABLE'
+        col.operator("customlines.list_action", icon='VISIBLE_IPO_ON', text="Enable All").action = 'ENABLE'
+        col.operator("customlines.list_action", icon='VISIBLE_IPO_OFF', text="Disable All").action = 'DISABLE'
 
         row = layout.row()
         col = row.column(align=True)
-        col.operator("customcylinder.clear_list", icon="X")
+        col.operator("customlines.clear_list", icon="X")
 
-class Uilist_selectAllItems_cylinder(bpy.types.Operator):
-    bl_idname = "customcylinder.select_item"
+class Uilist_selectAllItems_lines(bpy.types.Operator):
+    bl_idname = "customlines.select_item"
     bl_label = "Select List Item"
     bl_description = "Select Item in scene"
 
@@ -116,42 +116,38 @@ class Uilist_selectAllItems_cylinder(bpy.types.Operator):
     def execute(self, context):
         scn = context.scene
         bpy.ops.object.select_all(action='DESELECT')
-        idx = scn.custom_cylinder_index
+        idx = scn.custom_lines_index
 
         try:
-            item = scn.custom_cylinder[idx]
+            item = scn.custom_lines[idx]
         except IndexError:
             pass
 
         else:
             bpy.ops.object.mode_set(mode='OBJECT')
-            self._ob_select = bpy.data.objects[scn.custom_cylinder[scn.custom_cylinder_index].name]
+            self._ob_select = bpy.data.objects[scn.custom_lines[scn.custom_lines_index].name]
             self._ob_select.select = True
             scn.ignit_panel.vp_model_types = self._ob_select["vp_model_types"]
-
-            scn.ignit_panel.vp_obj_Point1 = self._ob_select["vp_obj_Point1"]
-            scn.ignit_panel.vp_obj_Point2 = self._ob_select["vp_obj_Point2"]
-            scn.ignit_panel.vp_radius = self._ob_select["vp_radius"]
             scn.ignit_panel.vp_export_enable = self._ob_select["vp_export_enable"]
 
         return{'FINISHED'}
 
-class Uilist_clearAllItems_cylinder(bpy.types.Operator):
-    bl_idname = "customcylinder.clear_list"
+class Uilist_clearAllItems_lines(bpy.types.Operator):
+    bl_idname = "customlines.clear_list"
     bl_label = "Clear List"
     bl_description = "Clear all items in the list"
 
     def execute(self, context):
         scn = context.scene
-        lst = scn.custom_cylinder
-        current_index = scn.custom_cylinder_index
+        lst = scn.custom_lines
         bpy.ops.object.select_all(action='DESELECT')
 
         if len(lst) > 0:
             for i in range(len(lst)-1,-1,-1):
-                bpy.data.objects[scn.custom_cylinder[i].name].select = True
+                bpy.data.objects[scn.custom_lines[i].name].select = True
                 bpy.ops.object.delete()
-                scn.custom_cylinder.remove(i)
+                scn.custom_lines.remove(i)
+
             self.report({'INFO'}, "All items removed")
 
         else:
@@ -159,7 +155,7 @@ class Uilist_clearAllItems_cylinder(bpy.types.Operator):
 
         return{'FINISHED'}
 
-class CustomProp_cylinder(bpy.types.PropertyGroup):
+class CustomProp_lines(bpy.types.PropertyGroup):
     '''name = StringProperty() '''
     id = IntProperty()
     enabled = bpy.props.BoolProperty()
@@ -170,12 +166,12 @@ class CustomProp_cylinder(bpy.types.PropertyGroup):
 # #########################################
 
 classes = (
-    CustomProp_cylinder,
-    Uilist_actions_cylinder,
-    Uilist_clearAllItems_cylinder,
-    Uilist_selectAllItems_cylinder,
-    UIListPanelExample_cylinder,
-    UL_items_cylinder
+    CustomProp_lines,
+    Uilist_actions_lines,
+    Uilist_clearAllItems_lines,
+    Uilist_selectAllItems_lines,
+    UIListPanelExample_lines,
+    UL_items_lines
 )
 
 if __name__ == "__main__":

@@ -2,7 +2,7 @@
 bl_info = {
     "name": "ViSP CAO",
     "author": "Vikas Thamizharasan",
-    "blender": (2, 6, 9),
+    "blender": (2, 7, 6),
     "location": "File > Export",
     "description": "Export CAO",
     "warning": "",
@@ -19,8 +19,10 @@ from bpy_extras.io_utils import (ImportHelper,
                                  )
 _modules = [
     "property_panel",
-    "treeview_circles",
-    "treeview_cylinders"
+    "treeview_faces",
+    "treeview_lines",
+    "treeview_cylinders",
+    "treeview_circles"
 ]
 
 __import__(name=__name__, fromlist=_modules)
@@ -118,6 +120,7 @@ class ExportCAO(bpy.types.Operator, ExportHelper):
 
     def execute(self, context):
         from . import export_cao
+        scn = context.scene
         # TODO: Select all enabled items, deselect remaining
         from mathutils import Matrix
         keywords = self.as_keywords(ignore=("axis_forward",
@@ -133,6 +136,15 @@ class ExportCAO(bpy.types.Operator, ExportHelper):
                                          ).to_4x4())
         keywords["global_matrix"] = global_matrix
 
+        bpy.ops.object.mode_set(mode='OBJECT')
+        bpy.ops.object.select_all(action='DESELECT')
+
+        print("Exporting Objects:")
+        for mlist in scn.custom_faces, scn.custom_lines, scn.custom_cylinder, scn.custom_circle:
+            for item in mlist: 
+                if item.enabled:
+                    bpy.data.objects[item.name].select = True
+                    print(item.name)
         return export_cao.save(self, context, **keywords)
 
 # #########################################
@@ -153,11 +165,17 @@ def register():
             bpy.types.Scene.custom_vertices = CollectionProperty(type=mod.classes[0])
             bpy.types.Scene.custom_vertices_index = IntProperty()
         elif mod == _modules_loaded[1]:
-            bpy.types.Scene.custom_circle = CollectionProperty(type=mod.classes[0])
-            bpy.types.Scene.custom_circle_index = IntProperty()
+            bpy.types.Scene.custom_faces = CollectionProperty(type=mod.classes[0])
+            bpy.types.Scene.custom_faces_index = IntProperty()
         elif mod == _modules_loaded[2]:
+            bpy.types.Scene.custom_lines = CollectionProperty(type=mod.classes[0])
+            bpy.types.Scene.custom_lines_index = IntProperty()
+        elif mod == _modules_loaded[3]:
             bpy.types.Scene.custom_cylinder = CollectionProperty(type=mod.classes[0])
             bpy.types.Scene.custom_cylinder_index = IntProperty()
+        elif mod == _modules_loaded[4]:
+            bpy.types.Scene.custom_circle = CollectionProperty(type=mod.classes[0])
+            bpy.types.Scene.custom_circle_index = IntProperty()
 
     bpy.utils.register_module(__name__)
     bpy.types.INFO_MT_file_export.append(menu_func_export)

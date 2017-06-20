@@ -48,6 +48,9 @@ class Uilist_actions_circle(bpy.types.Operator):
 
             elif self.action == 'REMOVE':
                 info = 'Item %s removed from list' % (scn.custom_circle[scn.custom_circle_index].name)
+                bpy.ops.object.select_all(action='DESELECT')
+                bpy.data.objects[scn.custom_circle[scn.custom_circle_index].name].select = True
+                bpy.ops.object.delete()
                 scn.custom_circle_index -= 1
                 self.report({'INFO'}, info)
                 scn.custom_circle.remove(idx)
@@ -92,6 +95,7 @@ class UIListPanelExample_circle(Panel):
         col.operator("customcircle.list_action", icon='ZOOMOUT', text="").action = 'REMOVE'
         col.separator()
         col.operator("customcircle.list_action", icon='TRIA_UP', text="").action = 'UP'
+        col.operator("customcircle.select_item", icon="UV_SYNC_SELECT")
         col.operator("customcircle.list_action", icon='TRIA_DOWN', text="").action = 'DOWN'
         col.separator()
         col.operator("customcircle.list_action", icon='VISIBLE_IPO_ON', text="Enable All").action = 'ENABLE'
@@ -99,7 +103,6 @@ class UIListPanelExample_circle(Panel):
 
         row = layout.row()
         col = row.column(align=True)
-        col.operator("customcircle.select_item", icon="UV_SYNC_SELECT")
         col.operator("customcircle.clear_list", icon="X")
 
 class Uilist_selectAllItems_circle(bpy.types.Operator):
@@ -120,7 +123,8 @@ class Uilist_selectAllItems_circle(bpy.types.Operator):
         except IndexError:
             pass
 
-        else:
+        else:#todo switch to object mode
+            bpy.ops.object.mode_set(mode='OBJECT')
             self._ob_select = bpy.data.objects[scn.custom_circle[scn.custom_circle_index].name]
             self._ob_select.select = True
             scn.ignit_panel.vp_model_types = self._ob_select["vp_model_types"]
@@ -138,13 +142,17 @@ class Uilist_clearAllItems_circle(bpy.types.Operator):
     bl_label = "Clear List"
     bl_description = "Clear all items in the list"
 
-    def execute(self, context):
+    def execute(self, context):#todo : delete scene elements
         scn = context.scene
         lst = scn.custom_circle
+        bpy.ops.object.select_all(action='DESELECT')
 
         if len(lst) > 0:
             for i in range(len(lst)-1,-1,-1):
+                bpy.data.objects[scn.custom_circle[i].name].select = True
                 scn.custom_circle.remove(i)
+                bpy.ops.object.delete()
+
             self.report({'INFO'}, "All items removed")
 
         else:
