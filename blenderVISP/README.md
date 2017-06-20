@@ -12,7 +12,7 @@ This Addon was tested with:
     - (**Ctrl+Atl+U**) under Linux
     - (**Cmd+,**) under OSX
   3. Click on `Install from File...` and navigate to the above project directory and select the zip file.
-  4. Search for "*visp*"" in Add-ons section and enable the plugin called "*Export: ViSP CAO*".
+  4. Search for "*visp*" in Add-ons section and enable the plugin called "*Export: ViSP CAO* ".
   5. Click on `Save User Settings` and close `Blender User Preferences` pannel.
   6. On the left side of Blender, there should be a new tab named `Misc` located under the `Tools`, `Create`,... tabs.
 
@@ -22,6 +22,7 @@ This Addon was tested with:
 the user will fill in the primitve details while the treeview panel is where the user will manage(enable, disable, delete) the different primitives(3D Face, 3D Line, 3D Cylinder, 3D Circle).
 
 - To assign a primitive to a model:
+
       * Select the model in the blender scene view;
       * Click on `+ New` in the ViSP Property Panel;
       * Choose `Primitive Type` from dropdown list.
